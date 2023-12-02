@@ -576,13 +576,79 @@ export default class CanvasView extends ModuleView<Canvas> {
     const script = document.createElement('script');
     const scriptFn = model.getScriptString();
     const scriptFnStr = model.get('script-props') ? scriptFn : `function(){\n${scriptFn}\n;}`;
+    const _extLibraries = model.get('extLibraries');
+    const extLibraries = _extLibraries ? JSON.stringify(_extLibraries) : '[]';
     const scriptProps = JSON.stringify(model.__getScriptProps());
     script.innerHTML = `
-      setTimeout(function() {
-        var item = document.getElementById('${id}');
-        if (!item) return;
-        (${scriptFnStr}.bind(item))(${scriptProps})
-      }, 1);`;
+    setTimeout(function() {
+      function loadScript(e) {
+        return new Promise(function(resolve, reject) {
+          let script = document.createElement('script');
+          Object.keys(e.attributes).forEach(key => script.setAttribute(key, e.attributes[key]))
+          script.async = false;
+          script.onload = function() {
+            resolve(e.attributes.src);
+          };
+          script.onerror = function() {
+            reject(e.attributes.src);
+          };
+        
+          if(e.head){
+            document.head.appendChild(script);
+          } else {
+            document.body.appendChild(script);
+          }
+        });
+      }
+
+      function loadLink(e) {
+        const link = document.createElement('link')
+        Object.keys(e.attributes).forEach(key => link.setAttribute(key, e.attributes[key]))
+        document.head.appendChild(link)
+      }
+      
+      let promises = [];
+      ${extLibraries}.forEach(function(e) {
+        const tags = e.head ? document.head.getElementsByTagName(e.tag) : document.body.getElementsByTagName(e.tag);
+        var foundMatchingAddress = false;
+        
+        if(e.tag == 'script'){
+          for (let tag of tags) {
+            if (tag.src && tag.src.includes(e.attributes.src)) {
+              foundMatchingAddress = true;
+              break;
+            }
+          }
+          if(!foundMatchingAddress){ 
+            promises.push(loadScript(e));
+          }
+	      }
+	              
+        if(e.tag == 'link'){
+          for (let tag of tags) {
+            if (tag.href && tag.href.includes(e.attributes.href)) {
+              foundMatchingAddress = true;
+              break;
+            }
+          }
+          if(!foundMatchingAddress){
+            loadLink(e);
+          }
+	      }
+           
+      });
+
+      Promise.all(promises)
+      .then(function() {
+	    console.log('all scripts loaded');
+      var item = document.getElementById('${id}');
+      if (!item) return;
+      (${scriptFnStr}.bind(item))(${scriptProps})
+
+    }).catch(function(script) {
+	    console.log(script + ' failed to load');
+    });
+  }, 1);`;
     // #873
     // Adding setTimeout will make js components work on init of the editor
     setTimeout(() => {
