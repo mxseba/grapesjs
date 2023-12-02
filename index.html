@@ -116,10 +116,37 @@
         },
       });
 
+      const typeTest = 'testComponent';
       editor.BlockManager.add('testBlock', {
         label: 'Block',
         attributes: { class:'gjs-fonts gjs-f-b1' },
-        content: `<div style="padding-top:50px; padding-bottom:50px; text-align:center">Test block</div>`
+        content: { type: typeTest  }
+      })
+
+      editor.Components.addType(typeTest, {
+        model: {
+          defaults: {
+            name: 'Test',
+            content: `
+              <button>Start Animation</button>
+              <p>Sample animation using jquery dynamic loading on canvas.</p>
+              <div class="block" style="background:#98bf21;height:100px;width:100px;position:absolute;"></div>
+              
+            `,
+            extLibraries: [
+              {tag:'script', head:false, attributes:{src:'https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js'}},
+            ],
+            script: function(){
+              const currentEl = this;
+              $(document).ready(function(){
+                $("button").click(function(){
+                $("div").animate({left: '500px'});
+                });
+              
+              })
+            } 
+          }
+        }
       })
     </script>
   </body>
