@@ -15844,13 +15844,15 @@ var command = {
         var components = opts.component || ed.getSelectedAll();
         components = (0,underscore__WEBPACK_IMPORTED_MODULE_0__.isArray)(components) ? __spreadArray([], components, true) : [components];
         components.filter(Boolean).forEach(function (component) {
+            var _a, _b;
             if (!component.get('removable')) {
                 toSelect.push(component);
                 return _this.em.logWarning('The element is not removable', {
                     component: component,
                 });
             }
-            component.remove();
+            var cmp = ((_b = (_a = component.delegate) === null || _a === void 0 ? void 0 : _a.remove) === null || _b === void 0 ? void 0 : _b.call(_a, component)) || component;
+            cmp.remove();
         });
         ed.select(toSelect);
         return components;
@@ -16446,88 +16448,10 @@ var __spreadArray = (undefined && undefined.__spreadArray) || function (to, from
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({
     run: function (ed) {
         var em = ed.getModel();
-        var models = __spreadArray([], ed.getSelectedAll(), true);
+        var models = __spreadArray([], ed.getSelectedAll(), true).map(function (md) { var _a, _b; return ((_b = (_a = md.delegate) === null || _a === void 0 ? void 0 : _a.copy) === null || _b === void 0 ? void 0 : _b.call(_a, md)) || md; }).filter(Boolean);
         models.length && em.set('clipboard', models);
     },
 });
-
-
-/***/ }),
-
-/***/ 517:
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-__webpack_require__.r(__webpack_exports__);
-/* harmony export */ __webpack_require__.d(__webpack_exports__, {
-/* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
-/* harmony export */ });
-/* harmony import */ var underscore__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(50);
-/* harmony import */ var _common__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(895);
-/* harmony import */ var _SelectComponent__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(407);
-
-
-
-/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ((0,underscore__WEBPACK_IMPORTED_MODULE_0__.extend)({}, _SelectComponent__WEBPACK_IMPORTED_MODULE_1__["default"], {
-    init: function () {
-        (0,underscore__WEBPACK_IMPORTED_MODULE_0__.bindAll)(this, 'startDelete', 'stopDelete', 'onDelete');
-        this.hoverClass = this.pfx + 'hover-delete';
-        this.badgeClass = this.pfx + 'badge-red';
-    },
-    enable: function () {
-        var that = this;
-        this.$el.find('*').mouseover(this.startDelete).mouseout(this.stopDelete).click(this.onDelete);
-    },
-    /**
-     * Start command
-     * @param {Object}  e
-     * @private
-     */
-    startDelete: function (e) {
-        e.stopPropagation();
-        var $this = (0,_common__WEBPACK_IMPORTED_MODULE_2__["default"])(e.target);
-        // Show badge if possible
-        if ($this.data('model').get('removable')) {
-            $this.addClass(this.hoverClass);
-            this.attachBadge($this.get(0));
-        }
-    },
-    /**
-     * Stop command
-     * @param {Object}  e
-     * @private
-     */
-    stopDelete: function (e) {
-        e.stopPropagation();
-        var $this = (0,_common__WEBPACK_IMPORTED_MODULE_2__["default"])(e.target);
-        $this.removeClass(this.hoverClass);
-        // Hide badge if possible
-        if (this.badge)
-            this.badge.css({ left: -1000, top: -1000 });
-    },
-    /**
-     * Delete command
-     * @param {Object}  e
-     * @private
-     */
-    onDelete: function (e) {
-        e.stopPropagation();
-        var $this = (0,_common__WEBPACK_IMPORTED_MODULE_2__["default"])(e.target);
-        // Do nothing in case can't remove
-        if (!$this.data('model').get('removable'))
-            return;
-        $this.data('model').destroy();
-        this.removeBadge();
-        this.clean();
-    },
-    /**
-     * Updates badge label
-     * @param   {Object}  model
-     * @private
-     * */
-    updateBadgeLabel: function (model) {
-        this.badge.html('Remove ' + model.getName());
-    },
-}));
 
 
 /***/ }),
@@ -17225,24 +17149,28 @@ __webpack_require__.r(__webpack_exports__);
         var em = ed.getModel();
         var clp = em.get('clipboard');
         var lastSelected = ed.getSelected();
-        if (clp && lastSelected) {
-            ed.getSelectedAll().forEach(function (selected) {
+        if ((clp === null || clp === void 0 ? void 0 : clp.length) && lastSelected) {
+            ed.getSelectedAll().forEach(function (sel) {
+                var _a, _b, _c;
+                var selected = ((_b = (_a = sel.delegate) === null || _a === void 0 ? void 0 : _a.copy) === null || _b === void 0 ? void 0 : _b.call(_a, sel)) || sel;
                 var collection = selected.collection;
-                if (!collection)
-                    return;
                 var added;
-                var at = selected.index() + 1;
-                var addOpts = { at: at, action: opts.action || 'paste-component' };
-                if ((0,underscore__WEBPACK_IMPORTED_MODULE_0__.contains)(clp, selected) && selected.get('copyable')) {
-                    // @ts-ignore
-                    added = collection.add(selected.clone(), addOpts);
+                if (collection) {
+                    var at = selected.index() + 1;
+                    var addOpts = { at: at, action: opts.action || 'paste-component' };
+                    if ((0,underscore__WEBPACK_IMPORTED_MODULE_0__.contains)(clp, selected) && selected.get('copyable')) {
+                        added = collection.add(selected.clone(), addOpts);
+                    }
+                    else {
+                        added = doAdd(ed, clp, selected.parent(), addOpts);
+                    }
                 }
                 else {
-                    var copyable = clp.filter(function (cop) { return cop.get('copyable'); });
-                    var pasteable = copyable.filter(function (cop) { return ed.Components.canMove(selected.parent(), cop).result; });
-                    added = collection.add(
-                    // @ts-ignore
-                    pasteable.map(function (cop) { return cop.clone(); }), addOpts);
+                    // Page body is selected
+                    // Paste at the end of the body
+                    var pageBody = (_c = em.Pages.getSelected()) === null || _c === void 0 ? void 0 : _c.getMainComponent();
+                    var addOpts = { at: (pageBody === null || pageBody === void 0 ? void 0 : pageBody.components().length) || 0, action: opts.action || 'paste-component' };
+                    added = doAdd(ed, clp, pageBody, addOpts);
                 }
                 added = (0,underscore__WEBPACK_IMPORTED_MODULE_0__.isArray)(added) ? added : [added];
                 added.forEach(function (add) { return ed.trigger('component:paste', add); });
@@ -17251,6 +17179,11 @@ __webpack_require__.r(__webpack_exports__);
         }
     },
 });
+function doAdd(ed, clp, parent, addOpts) {
+    var copyable = clp.filter(function (cop) { return cop.get('copyable'); });
+    var pasteable = copyable.filter(function (cop) { return ed.Components.canMove(parent, cop).result; });
+    return parent.components().add(pasteable.map(function (cop) { return cop.clone(); }), addOpts);
+}
 
 
 /***/ }),
@@ -17378,7 +17311,7 @@ var __assign = (undefined && undefined.__assign) || function () {
         var opt = opts || {};
         var canvas = editor.Canvas;
         var canvasView = canvas.getCanvasView();
-        var options = __assign({ appendTo: canvas.getResizerEl(), prefix: editor.getConfig().stylePrefix, posFetcher: canvasView.getElementPos.bind(canvasView), mousePosFetcher: canvas.getMouseRelativePos }, (opt.options || {}));
+        var options = __assign({ appendTo: canvas.getResizerEl(), prefix: editor.getConfig().stylePrefix, posFetcher: canvasView.getElementPos.bind(canvasView), mousePosFetcher: canvas.getMouseRelativePos.bind(canvas) }, (opt.options || {}));
         var canvasResizer = this.canvasResizer;
         // Create the resizer for the canvas if not yet created
         if (!canvasResizer || opt.forceNew) {
@@ -17700,8 +17633,7 @@ var showOffsets;
         methods[method](listenToEl, 'scroll', this.onContainerChange);
         em[method]('component:toggled component:update undo redo', this.onSelect, this);
         em[method]('change:componentHovered', this.onHovered, this);
-        em[method]('component:resize styleable:change component:input', // component:styleUpdate
-        this.updateGlobalPos, this);
+        em[method]('component:resize styleable:change component:input', this.updateGlobalPos, this);
         em[method]('component:update:toolbar', this._upToolbar, this);
         em[method]('change:canvasOffset', this.updateAttached, this);
         em[method]('frame:updated', this.onFrameUpdated, this);
@@ -20700,6 +20632,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   getViewEl: () => (/* binding */ getViewEl),
 /* harmony export */   hasDnd: () => (/* binding */ hasDnd),
 /* harmony export */   hasWin: () => (/* binding */ hasWin),
+/* harmony export */   isBultInMethod: () => (/* binding */ isBultInMethod),
 /* harmony export */   isComponent: () => (/* binding */ isComponent),
 /* harmony export */   isDef: () => (/* binding */ isDef),
 /* harmony export */   isEmptyObj: () => (/* binding */ isEmptyObj),
@@ -20707,6 +20640,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   isRule: () => (/* binding */ isRule),
 /* harmony export */   matches: () => (/* binding */ matches),
 /* harmony export */   normalizeFloat: () => (/* binding */ normalizeFloat),
+/* harmony export */   normalizeKey: () => (/* binding */ normalizeKey),
 /* harmony export */   setViewEl: () => (/* binding */ setViewEl),
 /* harmony export */   shallowDiff: () => (/* binding */ shallowDiff),
 /* harmony export */   toLowerCase: () => (/* binding */ toLowerCase),
@@ -20737,6 +20671,9 @@ var __spreadArray = (undefined && undefined.__spreadArray) || function (to, from
 };
 
 
+var obj = {};
+var isBultInMethod = function (key) { return (0,underscore__WEBPACK_IMPORTED_MODULE_0__.isFunction)(obj[key]); };
+var normalizeKey = function (key) { return (isBultInMethod(key) ? "_".concat(key) : key); };
 var wait = function (mls) {
     if (mls === void 0) { mls = 0; }
     return new Promise(function (res) { return setTimeout(res, mls); });
@@ -20899,11 +20836,11 @@ var deepMerge = function () {
  * @return {Component}
  */
 var getModel = function (el, $) {
-    var model = el;
+    var model;
     if (!$ && el && el.__cashData) {
         model = el.__cashData.model;
     }
-    else if ((0,underscore__WEBPACK_IMPORTED_MODULE_0__.isElement)(el)) {
+    else if ($ && (0,underscore__WEBPACK_IMPORTED_MODULE_0__.isElement)(el)) {
         model = $(el).data('model');
     }
     return model;
@@ -20976,8 +20913,6 @@ var map = {
 	"./ComponentStyleClear.ts": 910,
 	"./CopyComponent": 744,
 	"./CopyComponent.ts": 744,
-	"./DeleteComponent": 517,
-	"./DeleteComponent.ts": 517,
 	"./ExportTemplate": 457,
 	"./ExportTemplate.ts": 457,
 	"./Fullscreen": 975,
@@ -25258,27 +25193,13 @@ var Frame = /** @class */ (function (_super) {
             _this.set('styles', allRules);
         }
         else if (!(0,mixins.isObject)(styles)) {
+            var newStyles = styles;
             // Avoid losing styles on remapped components
-            var idMapKeys = Object.keys(idMap);
-            if (idMapKeys.length && Array.isArray(styles)) {
-                styles.forEach(function (style) {
-                    var sel = style.selectors;
-                    if (sel && sel.length == 1) {
-                        var sSel = sel[0];
-                        var idSel = sSel.name && sSel.type === 2 && sSel;
-                        if (idSel && idMap[idSel.name]) {
-                            idSel.name = idMap[idSel.name];
-                        }
-                        else if ((0,index_all.isString)(sSel) && sSel[0] === '#') {
-                            var prevId = sSel.substring(1);
-                            if (prevId && idMap[prevId]) {
-                                sel[0] = "#".concat(idMap[prevId]);
-                            }
-                        }
-                    }
-                });
+            if ((0,index_all.keys)(idMap).length) {
+                newStyles = (0,index_all.isString)(newStyles) ? em.Parser.parseCss(newStyles) : newStyles;
+                em.Css.checkId(newStyles, { idMap: idMap });
             }
-            allRules.add(styles);
+            allRules.add(newStyles);
             _this.set('styles', allRules);
         }
         !attr.width && _this.set(keyAutoW, 1);
@@ -25902,7 +25823,7 @@ var PageManager = /** @class */ (function (_super) {
             return page;
         };
         !opts.silent && em.trigger(evPageAddBefore, props, add, opts);
-        return !opts.abort && add();
+        return !opts.abort ? add() : undefined;
     };
     /**
      * Remove page
@@ -26275,10 +26196,37 @@ var CanvasEvents;
      * });
      */
     CanvasEvents["pointer"] = "canvas:pointer";
+    /**
+     * @event `canvas:frame:load` Frame loaded in canvas.
+     * The event is triggered right after iframe's `onload`.
+     * @example
+     * editor.on('canvas:frame:load', ({ window }) => {
+     *  console.log('Frame loaded', window);
+     * });
+     */
+    CanvasEvents["frameLoad"] = "canvas:frame:load";
+    /**
+     * @event `canvas:frame:load:head` Frame head loaded in canvas.
+     * The event is triggered right after iframe's finished to load the head elemenets (eg. scripts)
+     * @example
+     * editor.on('canvas:frame:load:head', ({ window }) => {
+     *  console.log('Frame head loaded', window);
+     * });
+     */
+    CanvasEvents["frameLoadHead"] = "canvas:frame:load:head";
+    /**
+     * @event `canvas:frame:load:body` Frame body loaded in canvas.
+     * The event is triggered when the body is rendered with components.
+     * @example
+     * editor.on('canvas:frame:load:body', ({ window }) => {
+     *  console.log('Frame completed the body render', window);
+     * });
+     */
+    CanvasEvents["frameLoadBody"] = "canvas:frame:load:body";
 })(CanvasEvents || (CanvasEvents = {}));
 /**{END_EVENTS}*/
 // need this to avoid the TS documentation generator to break
-/* harmony default export */ const types = ((/* unused pure expression or super */ null && (CanvasEvents)));
+/* harmony default export */ const types = (CanvasEvents);
 
 ;// CONCATENATED MODULE: ./src/abstract/ModuleView.ts
 var ModuleView_extends = (undefined && undefined.__extends) || (function () {
@@ -26951,6 +26899,7 @@ var FrameView_spreadArray = (undefined && undefined.__spreadArray) || function (
 
 
 
+
 var FrameView = /** @class */ (function (_super) {
     FrameView_extends(FrameView, _super);
     function FrameView(model, view) {
@@ -27191,7 +27140,7 @@ var FrameView = /** @class */ (function (_super) {
         var _a = this, $el = _a.$el, ppfx = _a.ppfx, em = _a.em;
         $el.attr({ class: "".concat(ppfx, "frame") });
         this.renderScripts();
-        em.trigger('frame:render', this);
+        em.trigger('frame:render', this); // deprecated
         return this;
     };
     FrameView.prototype.renderScripts = function () {
@@ -27205,12 +27154,19 @@ var FrameView = /** @class */ (function (_super) {
             if (scripts.length > 0) {
                 var src = scripts.shift();
                 var scriptEl = (0,dom/* createEl */.ut)('script', FrameView_assign({ type: 'text/javascript' }, ((0,index_all.isString)(src) ? { src: src } : src)));
-                scriptEl.onerror = scriptEl.onload = appendScript.bind(null, scripts);
                 (_a = el.contentDocument) === null || _a === void 0 ? void 0 : _a.head.appendChild(scriptEl);
+                if (scriptEl.hasAttribute('nomodule') && 'noModule' in HTMLScriptElement.prototype) {
+                    appendScript(scripts);
+                }
+                else {
+                    scriptEl.onerror = scriptEl.onload = appendScript.bind(null, scripts);
+                }
             }
             else {
+                em === null || em === void 0 ? void 0 : em.trigger(types.frameLoadHead, evOpts);
                 _this.renderBody();
-                em && em.trigger(evLoad, evOpts);
+                em === null || em === void 0 ? void 0 : em.trigger(types.frameLoadBody, evOpts);
+                em === null || em === void 0 ? void 0 : em.trigger(evLoad, evOpts); // deprecated
             }
         };
         el.onload = function () {
@@ -27221,7 +27177,9 @@ var FrameView = /** @class */ (function (_super) {
                 doc.write(frameContent);
                 doc.close();
             }
-            em && em.trigger("".concat(evLoad, ":before"), evOpts);
+            evOpts.window = _this.getWindow();
+            em === null || em === void 0 ? void 0 : em.trigger("".concat(evLoad, ":before"), evOpts); // deprecated
+            em === null || em === void 0 ? void 0 : em.trigger(types.frameLoad, evOpts);
             appendScript(FrameView_spreadArray([], canvas.get('scripts'), true));
         };
     };
@@ -28087,8 +28045,10 @@ var CanvasView = /** @class */ (function (_super) {
         var script = document.createElement('script');
         var scriptFn = model.getScriptString();
         var scriptFnStr = model.get('script-props') ? scriptFn : "function(){\n".concat(scriptFn, "\n;}");
+        var _extLibraries = model.get('extLibraries');
+        var extLibraries = _extLibraries ? JSON.stringify(_extLibraries) : '[]';
         var scriptProps = JSON.stringify(model.__getScriptProps());
-        script.innerHTML = "\n      setTimeout(function() {\n        var item = document.getElementById('".concat(id, "');\n        if (!item) return;\n        (").concat(scriptFnStr, ".bind(item))(").concat(scriptProps, ")\n      }, 1);");
+        script.innerHTML = "\n    setTimeout(function() {\n      function loadScript(e) {\n        return new Promise(function(resolve, reject) {\n          let script = document.createElement('script');\n          Object.keys(e.attributes).forEach(key => script.setAttribute(key, e.attributes[key]))\n          script.async = false;\n          script.onload = function() {\n            resolve(e.attributes.src);\n          };\n          script.onerror = function() {\n            reject(e.attributes.src);\n          };\n        \n          if(e.head){\n            document.head.appendChild(script);\n          } else {\n            document.body.appendChild(script);\n          }\n        });\n      }\n\n      function loadLink(e) {\n        const link = document.createElement('link')\n        Object.keys(e.attributes).forEach(key => link.setAttribute(key, e.attributes[key]))\n        document.head.appendChild(link)\n      }\n      \n      let promises = [];\n      ".concat(extLibraries, ".forEach(function(e) {\n        const tags = e.head ? document.head.getElementsByTagName(e.tag) : document.body.getElementsByTagName(e.tag);\n        var foundMatchingAddress = false;\n        \n        if(e.tag == 'script'){\n          for (let tag of tags) {\n            if (tag.src && tag.src.includes(e.attributes.src)) {\n              foundMatchingAddress = true;\n              break;\n            }\n          }\n          if(!foundMatchingAddress){ \n            promises.push(loadScript(e));\n          }\n\t      }\n\t              \n        if(e.tag == 'link'){\n          for (let tag of tags) {\n            if (tag.href && tag.href.includes(e.attributes.href)) {\n              foundMatchingAddress = true;\n              break;\n            }\n          }\n          if(!foundMatchingAddress){\n            loadLink(e);\n          }\n\t      }\n           \n      });\n\n      Promise.all(promises)\n      .then(function() {\n\t    console.log('all scripts loaded');\n      var item = document.getElementById('").concat(id, "');\n      if (!item) return;\n      (").concat(scriptFnStr, ".bind(item))(").concat(scriptProps, ")\n\n    }).catch(function(script) {\n\t    console.log(script + ' failed to load');\n    });\n  }, 1);");
         // #873
         // Adding setTimeout will make js components work on init of the editor
         setTimeout(function () {
@@ -28607,22 +28567,23 @@ var CanvasModule = /** @class */ (function (_super) {
      */
     CanvasModule.prototype.getMouseRelativePos = function (e, opts) {
         if (opts === void 0) { opts = {}; }
-        var addTop = 0;
-        var addLeft = 0;
         var subWinOffset = opts.subWinOffset;
         var doc = e.target.ownerDocument;
         var win = doc.defaultView || doc.parentWindow;
         var frame = win.frameElement;
         var yOffset = subWinOffset ? win.pageYOffset : 0;
         var xOffset = subWinOffset ? win.pageXOffset : 0;
+        var zoomMlt = this.getZoomMultiplier();
+        var addTop = 0;
+        var addLeft = 0;
         if (frame) {
             var frameRect = frame.getBoundingClientRect();
             addTop = frameRect.top || 0;
             addLeft = frameRect.left || 0;
         }
         return {
-            y: e.clientY + addTop - yOffset,
-            x: e.clientX + addLeft - xOffset,
+            y: (e.clientY + addTop - yOffset) * zoomMlt,
+            x: (e.clientX + addLeft - xOffset) * zoomMlt,
         };
     };
     /**
@@ -28967,6 +28928,7 @@ var CanvasModule = /** @class */ (function (_super) {
     draggableComponents: true,
     disableTextInnerChilds: false,
     processor: undefined,
+    useFrameDoc: false,
     voidElements: [
         'area',
         'base',
@@ -29559,6 +29521,7 @@ var StyleableModel = /** @class */ (function (_super) {
         else {
             opts = value || {};
         }
+        opts.addStyle = prop;
         prop = this.extendStyle(prop);
         this.setStyle(prop, opts);
     };
@@ -29678,7 +29641,7 @@ var getComponentsFromDefs = function (items, all, opts) {
     var visitedCmps = opts.visitedCmps;
     var itms = (0,index_all.isArray)(items) ? items : [items];
     return itms.map(function (item) {
-        var _a = item.attributes, attributes = _a === void 0 ? {} : _a, components = item.components, tagName = item.tagName;
+        var _a = item.attributes, attributes = _a === void 0 ? {} : _a, components = item.components, tagName = item.tagName, style = item.style;
         var id = attributes.id, draggable = attributes.draggable, restAttr = __rest(attributes, ["id", "draggable"]);
         var result = item;
         if (id) {
@@ -29688,8 +29651,10 @@ var getComponentsFromDefs = function (items, all, opts) {
                 // Update the component if exists already
                 if (all[id]) {
                     result = all[id];
-                    tagName && result.set({ tagName: tagName }, Components_assign(Components_assign({}, opts), { silent: true }));
-                    (0,index_all.keys)(restAttr).length && result.addAttributes(restAttr, Components_assign({}, opts));
+                    var cmp = result;
+                    tagName && cmp.set({ tagName: tagName }, Components_assign(Components_assign({}, opts), { silent: true }));
+                    (0,index_all.keys)(restAttr).length && cmp.addAttributes(restAttr, Components_assign({}, opts));
+                    (0,index_all.keys)(style).length && cmp.addStyle(style, opts);
                 }
             }
             else {
@@ -30050,6 +30015,17 @@ var Selector = /** @class */ (function (_super) {
         return this.getFullName();
     };
     /**
+     * Get selector name.
+     * @returns {String}
+     * @example
+     * // Given such selector: { name: 'my-selector', label: 'My selector' }
+     * console.log(selector.getName());
+     * // -> `my-selector`
+     */
+    Selector.prototype.getName = function () {
+        return this.get('name') || '';
+    };
+    /**
      * Get selector label.
      * @returns {String}
      * @example
@@ -30058,7 +30034,7 @@ var Selector = /** @class */ (function (_super) {
      * // -> `My selector`
      */
     Selector.prototype.getLabel = function () {
-        return this.get('label');
+        return this.get('label') || '';
     };
     /**
      * Update selector label.
@@ -30077,7 +30053,7 @@ var Selector = /** @class */ (function (_super) {
      * @returns {Boolean}
      */
     Selector.prototype.getActive = function () {
-        return this.get('active');
+        return !!this.get('active');
     };
     /**
      * Update selector active state.
@@ -30117,7 +30093,7 @@ var Selector = /** @class */ (function (_super) {
      * @private
      */
     Selector.escapeName = function (name) {
-        return "".concat(name).trim().replace(/([^a-z0-9\w-\:@]+)/gi, '-');
+        return "".concat(name).trim().replace(/([^a-z0-9\w-\\:@\\/]+)/gi, '-');
     };
     // Type selectors: https://developer.mozilla.org/it/docs/Web/CSS/CSS_Selectors
     Selector.TYPE_CLASS = TYPE_CLASS;
@@ -30160,13 +30136,11 @@ var Selectors = /** @class */ (function (_super) {
         return "".concat(attr.name, "_").concat(attr.type || model_Selector.TYPE_CLASS);
     };
     Selectors.prototype.getStyleable = function () {
-        return (0,index_all.filter)(this.models, function (item) { return item.get('active') && !item.get('private'); });
+        return (0,index_all.filter)(this.models, function (item) { return item.getActive() && !item.get('private'); });
     };
     Selectors.prototype.getValid = function (_a) {
         var _b = _a === void 0 ? {} : _a, noDisabled = _b.noDisabled;
-        return (0,index_all.filter)(this.models, function (item) { return !item.get('private'); }).filter(function (item) {
-            return noDisabled ? item.get('active') : 1;
-        });
+        return (0,index_all.filter)(this.models, function (item) { return !item.get('private'); }).filter(function (item) { return (noDisabled ? item.get('active') : 1); });
     };
     Selectors.prototype.getFullString = function (collection, opts) {
         if (opts === void 0) { opts = {}; }
@@ -30709,6 +30683,7 @@ var keyUpdateInside = "".concat(keyUpdate, "-inside");
  * Eg. `toolbar: [ { attributes: {class: 'fa fa-arrows'}, command: 'tlb-move' }, ... ]`.
  * By default, when `toolbar` property is falsy the editor will add automatically commands `core:component-exit` (select parent component, added if there is one), `tlb-move` (added if `draggable`) , `tlb-clone` (added if `copyable`), `tlb-delete` (added if `removable`).
  * @property {Collection<Component>} [components=null] Children components. Default: `null`
+ * @property {Object} [delegate=null] Delegate commands to other components. Available commands `remove` | `move` | `copy` | `select`. eg. `{ remove: (cmp) => cmp.closestType('other-type') }`
  *
  * @module docsjs.Component
  */
@@ -30758,7 +30733,8 @@ var Component = /** @class */ (function (_super) {
                     traits: ['id', 'title'],
                     propagate: '',
                     dmode: '',
-                    toolbar: null
+                    toolbar: null,
+                    delegate: null
                 },
                 _a[keySymbol] = 0,
                 _a[keySymbols] = 0,
@@ -30802,6 +30778,13 @@ var Component = /** @class */ (function (_super) {
     Object.defineProperty(Component.prototype, "resizable", {
         get: function () {
             return this.get('resizable');
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(Component.prototype, "delegate", {
+        get: function () {
+            return this.get('delegate');
         },
         enumerable: false,
         configurable: true
@@ -30919,6 +30902,17 @@ var Component = /** @class */ (function (_super) {
             this.__changesUp(opts);
             this.__propSelfToParent({ component: this, changed: changed, options: opts });
         }
+    };
+    Component.prototype.__onStyleChange = function (newStyles) {
+        var _this = this;
+        var em = this.em;
+        if (!em)
+            return;
+        var event = 'component:styleUpdate';
+        var styleKeys = (0,index_all.keys)(newStyles);
+        var pros = { style: newStyles };
+        em.trigger(event, this, pros);
+        styleKeys.forEach(function (key) { return em.trigger("".concat(event, ":").concat(key), _this, pros); });
     };
     Component.prototype.__changesUp = function (opts) {
         var _a = this, em = _a.em, frame = _a.frame;
@@ -31080,16 +31074,19 @@ var Component = /** @class */ (function (_super) {
     /**
      * Replace a component with another one
      * @param {String|Component} el Component or HTML string
-     * @return {Component|Array<Component>} New added component/s
+     * @param {Object} [opts={}] Options for the append action
+     * @returns {Array<Component>} New replaced components
      * @example
-     * component.replaceWith('<div>Some new content</div>');
-     * // -> Component
+     * const result = component.replaceWith('<div>Some new content</div>');
+     * // result -> [Component]
      */
-    Component.prototype.replaceWith = function (el) {
+    Component.prototype.replaceWith = function (el, opts) {
+        if (opts === void 0) { opts = {}; }
         var coll = this.collection;
         var at = coll.indexOf(this);
         coll.remove(this);
-        return coll.add(el, { at: at });
+        var result = coll.add(el, Component_assign(Component_assign({}, opts), { at: at }));
+        return (0,index_all.isArray)(result) ? result : [result];
     };
     /**
      * Emit changes for each updated attribute
@@ -31201,6 +31198,9 @@ var Component = /** @class */ (function (_super) {
         else {
             prop = _super.prototype.setStyle.apply(this, arguments);
         }
+        if (!opt.temporary) {
+            this.__onStyleChange(opts.addStyle || prop);
+        }
         return prop;
     };
     /**
@@ -31219,7 +31219,7 @@ var Component = /** @class */ (function (_super) {
             delete attributes.class;
         }
         else {
-            this.classes.forEach(function (cls) { return classes.push((0,index_all.isString)(cls) ? cls : cls.get('name')); });
+            this.classes.forEach(function (cls) { return classes.push((0,index_all.isString)(cls) ? cls : cls.getName()); });
             classes.length && (attributes.class = classes.join(' '));
         }
         // Add style
@@ -31237,8 +31237,13 @@ var Component = /** @class */ (function (_super) {
             if (avoidInline(em) || !(0,index_all.isEmpty)(this.getStyle())) {
                 addId = !!(sm === null || sm === void 0 ? void 0 : sm.get(id, sm.Selector.TYPE_ID));
             }
+            if (
             // Symbols should always have an id
-            if (this.__getSymbol() || this.__getSymbols()) {
+            this.__getSymbol() ||
+                this.__getSymbols() ||
+                // Components with script should always have an id
+                this.get('script-export') ||
+                this.get('script')) {
                 addId = true;
             }
             if (addId) {
@@ -32154,6 +32159,7 @@ var Component = /** @class */ (function (_super) {
         delete obj.status;
         delete obj.open; // used in Layers
         delete obj._undoexc;
+        delete obj.delegate;
         if (!opts.fromUndo) {
             var symbol = obj[keySymbol];
             var symbols = obj[keySymbols];
@@ -32567,7 +32573,7 @@ var Component = /** @class */ (function (_super) {
         if (list === void 0) { list = {}; }
         if (opts === void 0) { opts = {}; }
         var comps = (0,index_all.isArray)(components) ? components : [components];
-        var _a = opts.keepIds, keepIds = _a === void 0 ? [] : _a;
+        var _a = opts.keepIds, keepIds = _a === void 0 ? [] : _a, _b = opts.idMap, idMap = _b === void 0 ? {} : _b;
         comps.forEach(function (comp) {
             comp.attributes;
             var _a = comp.attributes, attributes = _a === void 0 ? {} : _a, components = comp.components;
@@ -32575,6 +32581,7 @@ var Component = /** @class */ (function (_super) {
             // Check if we have collisions with current components
             if (id && list[id] && keepIds.indexOf(id) < 0) {
                 var newId_1 = Component.getIncrementId(id, list);
+                idMap[id] = newId_1;
                 attributes.id = newId_1;
                 // Update passed styles
                 (0,index_all.isArray)(styles) &&
@@ -34373,6 +34380,10 @@ var ComponentView = /** @class */ (function (_super) {
     ComponentView.prototype.tagName = function () {
         return this.model.get('tagName');
     };
+    ComponentView.prototype.preinitialize = function (opt) {
+        if (opt === void 0) { opt = {}; }
+        this.opts = opt;
+    };
     ComponentView.prototype.initialize = function (opt) {
         if (opt === void 0) { opt = {}; }
         var model = this.model;
@@ -34417,6 +34428,15 @@ var ComponentView = /** @class */ (function (_super) {
     Object.defineProperty(ComponentView.prototype, "frameView", {
         get: function () {
             return this.opts.config.frameView;
+        },
+        enumerable: false,
+        configurable: true
+    });
+    Object.defineProperty(ComponentView.prototype, "createDoc", {
+        get: function () {
+            var _a, _b;
+            var doc = ((_a = this.frameView) === null || _a === void 0 ? void 0 : _a.getDoc()) || document;
+            return ((_b = this.opts.config) === null || _b === void 0 ? void 0 : _b.useFrameDoc) ? doc : document;
         },
         enumerable: false,
         configurable: true
@@ -34528,7 +34548,7 @@ var ComponentView = /** @class */ (function (_super) {
     ComponentView.prototype.importClasses = function () {
         var _a = this, em = _a.em, model = _a.model;
         var sm = em.Selectors;
-        sm && model.classes.forEach(function (s) { return sm.add(s.get('name')); });
+        sm && model.classes.forEach(function (s) { return sm.add(s.getName()); });
     };
     /**
      * Update item on status change
@@ -34789,6 +34809,9 @@ var ComponentView = /** @class */ (function (_super) {
         var collection = model.components();
         var view = this;
         this.$el.data({ model: model, collection: collection, view: view });
+    };
+    ComponentView.prototype._createElement = function (tagName) {
+        return this.createDoc.createElement(tagName);
     };
     /**
      * Render children components
@@ -35377,7 +35400,7 @@ var ComponentTextView = /** @class */ (function (_super) {
             var range = selection.getRangeAt(0);
             var textNode = range.startContainer;
             var offset_1 = range.startOffset;
-            var textModel_1 = (0,mixins.getModel)(textNode);
+            var textModel_1 = (0,mixins.getComponentModel)(textNode);
             var newCmps_1 = [];
             if (textModel_1 && ((_a = textModel_1.is) === null || _a === void 0 ? void 0 : _a.call(textModel_1, 'textnode'))) {
                 var cmps = textModel_1.collection;
@@ -37798,6 +37821,38 @@ var CssComposer = /** @class */ (function (_super) {
         });
         return this.rulesView.render().el;
     };
+    CssComposer.prototype.checkId = function (rule, opts) {
+        if (opts === void 0) { opts = {}; }
+        var _a = opts.idMap, idMap = _a === void 0 ? {} : _a;
+        var changed = [];
+        if (!Object.keys(idMap).length)
+            return changed;
+        var rules = Array.isArray(rule) ? rule : [rule];
+        rules.forEach(function (rule) {
+            var sel = rule.selectors;
+            if (sel && sel.length == 1) {
+                var sSel = sel[0];
+                if ((0,index_all.isString)(sSel)) {
+                    if (sSel[0] === '#') {
+                        var prevId = sSel.substring(1);
+                        var newId = idMap[prevId];
+                        if (prevId && newId) {
+                            sel[0] = "#".concat(newId);
+                            changed.push(rule);
+                        }
+                    }
+                }
+                else if (sSel.name && sSel.type === model_Selector.TYPE_ID) {
+                    var newId = idMap[sSel.name];
+                    if (newId) {
+                        sSel.name = newId;
+                        changed.push(rule);
+                    }
+                }
+            }
+        });
+        return changed;
+    };
     CssComposer.prototype.destroy = function () {
         var _a;
         this.rules.reset();
@@ -37989,11 +38044,22 @@ var Categories_extends = (undefined && undefined.__extends) || (function () {
 })();
 
 
+
+
 var Categories = /** @class */ (function (_super) {
     Categories_extends(Categories, _super);
     function Categories() {
         return _super !== null && _super.apply(this, arguments) || this;
     }
+    /** @ts-ignore */
+    Categories.prototype.add = function (model, opts) {
+        var models = (0,index_all.isArray)(model) ? model : [model];
+        models.forEach(function (md) { return md && (md.id = (0,mixins.normalizeKey)("".concat(md.id))); });
+        return _super.prototype.add.call(this, model, opts);
+    };
+    Categories.prototype.get = function (id) {
+        return _super.prototype.get.call(this, (0,index_all.isString)(id) ? (0,mixins.normalizeKey)(id) : id);
+    };
     return Categories;
 }(common/* Collection */.FE));
 /* harmony default export */ const model_Categories = (Categories);
@@ -38355,10 +38421,10 @@ var BlocksView = /** @class */ (function (_super) {
     BlocksView_extends(BlocksView, _super);
     function BlocksView(opts, config) {
         var _this = _super.call(this, opts) || this;
+        _this.renderedCategories = new Map();
         (0,index_all.bindAll)(_this, 'getSorter', 'onDrag', 'onDrop', 'onMove');
         _this.config = config || {};
         _this.categories = opts.categories || '';
-        _this.renderedCategories = {};
         var ppfx = _this.config.pStylePrefix || '';
         _this.ppfx = ppfx;
         _this.noCatClass = "".concat(ppfx, "blocks-no-cat");
@@ -38438,7 +38504,7 @@ var BlocksView = /** @class */ (function (_super) {
      * @private
      * */
     BlocksView.prototype.add = function (model, fragment) {
-        var config = this.config;
+        var _a = this, config = _a.config, renderedCategories = _a.renderedCategories;
         var view = new view_BlockView({
             model: model,
             attributes: model.get('attributes'),
@@ -38456,12 +38522,12 @@ var BlocksView = /** @class */ (function (_super) {
             var catModel = this.categories.add(category);
             var catId = catModel.get('id');
             var categories = this.getCategoriesEl();
-            var catView = this.renderedCategories[catId];
+            var catView = renderedCategories.get(catId);
             // @ts-ignore
             model.set('category', catModel, { silent: true });
             if (!catView && categories) {
                 catView = new view_CategoryView({ model: catModel }, config).render();
-                this.renderedCategories[catId] = catView;
+                renderedCategories.set(catId, catView);
                 categories.appendChild(catView.el);
             }
             catView && catView.append(rendered);
@@ -38491,7 +38557,7 @@ var BlocksView = /** @class */ (function (_super) {
         var frag = document.createDocumentFragment();
         delete this.catsEl;
         delete this.blocksEl;
-        this.renderedCategories = {};
+        this.renderedCategories = new Map();
         this.el.innerHTML = "\n      <div class=\"".concat(this.catsClass, "\"></div>\n      <div class=\"").concat(this.noCatClass, "\">\n        <div class=\"").concat(this.blockContClass, "\"></div>\n      </div>\n    ");
         this.collection.each(function (model) { return _this.add(model, frag); });
         this.append(frag);
@@ -38960,7 +39026,6 @@ var ClassTagView = /** @class */ (function (_super) {
     ClassTagView.prototype.startEditTag = function () {
         var em = this.em;
         var inputEl = this.getInputEl();
-        inputEl;
         inputEl[inputProp] = 'true';
         inputEl.focus();
         em === null || em === void 0 ? void 0 : em.setEditing(true);
@@ -38978,7 +39043,7 @@ var ClassTagView = /** @class */ (function (_super) {
         inputEl[inputProp] = 'false';
         em === null || em === void 0 ? void 0 : em.setEditing(false);
         if (sm && sm.rename(model, label) !== model) {
-            inputEl.innerText = model.get('label');
+            inputEl.innerText = model.getLabel();
         }
     };
     /**
@@ -38987,7 +39052,7 @@ var ClassTagView = /** @class */ (function (_super) {
      */
     ClassTagView.prototype.changeStatus = function () {
         var model = this.model;
-        model.set('active', !model.get('active'));
+        model.set('active', !model.getActive());
     };
     /**
      * Remove tag from the selected component
@@ -39015,10 +39080,12 @@ var ClassTagView = /** @class */ (function (_super) {
         }
     };
     ClassTagView.prototype.render = function () {
-        var pfx = this.pfx;
-        var ppfx = this.ppfx;
-        this.$el.html(this.template());
-        this.$el.attr('class', "".concat(pfx, "tag ").concat(ppfx, "three-bg"));
+        var _a = this, pfx = _a.pfx, ppfx = _a.ppfx, $el = _a.$el, model = _a.model;
+        var mainCls = "".concat(pfx, "tag");
+        var classes = ["".concat(mainCls, " ").concat(ppfx, "three-bg")];
+        model.get('protected') && classes.push("".concat(mainCls, "-protected"));
+        $el.html(this.template());
+        $el.attr('class', classes.join(' '));
         this.updateStatus();
         return this;
     };
@@ -39076,7 +39143,7 @@ var ClassTagsView = /** @class */ (function (_super) {
         _this.listenTo(em, toList, _this.componentChanged);
         _this.listenTo(em, 'styleManager:update', _this.componentChanged);
         _this.listenTo(em, toListCls, _this.__handleStateChange);
-        _this.listenTo(em, 'styleable:change change:device', _this.checkSync); // component:styleUpdate
+        _this.listenTo(em, 'styleable:change change:device', _this.checkSync);
         _this.listenTo(coll, 'add', _this.addNew);
         _this.listenTo(coll, 'reset', _this.renderClasses);
         _this.listenTo(coll, 'remove', _this.tagRemoved);
@@ -44882,7 +44949,6 @@ var ItemsView_extends = (undefined && undefined.__extends) || (function () {
     };
 })();
 
-
 var ItemsView = /** @class */ (function (_super) {
     ItemsView_extends(ItemsView, _super);
     function ItemsView(opt) {
@@ -44909,11 +44975,6 @@ var ItemsView = /** @class */ (function (_super) {
                 containerSel: ".".concat(_this.className),
                 itemSel: ".".concat(pfx, "layer"),
                 ignoreViewChildren: 1,
-                onEndMove: function (created, sorter, data) {
-                    var srcModel = sorter.getSourceModel();
-                    em.setSelected(srcModel, { forceChange: 1 });
-                    em.trigger("".concat(eventDrag, ":end"), data);
-                },
                 avoidSelectOnEnd: 1,
                 nested: 1,
                 ppfx: ppfx,
@@ -45018,6 +45079,463 @@ var ItemsView = /** @class */ (function (_super) {
 }(common/* View */.G7));
 /* harmony default export */ const view_ItemsView = (ItemsView);
 
+// EXTERNAL MODULE: ./src/commands/view/CommandAbstract.ts
+var CommandAbstract = __webpack_require__(790);
+;// CONCATENATED MODULE: ./src/commands/config/config.ts
+var commands_config_config_config = {
+    stylePrefix: 'com-',
+    defaults: {},
+    strict: true,
+};
+/* harmony default export */ const commands_config_config = (commands_config_config_config);
+
+;// CONCATENATED MODULE: ./src/commands/index.ts
+/**
+ * You can customize the initial state of the module from the editor initialization, by passing the following [Configuration Object](https://github.com/GrapesJS/grapesjs/blob/master/src/commands/config/config.ts)
+ * ```js
+ * const editor = grapesjs.init({
+ *  commands: {
+ *    // options
+ *  }
+ * })
+ * ```
+ *
+ * Once the editor is instantiated you can use its API and listen to its events. Before using these methods, you should get the module from the instance.
+ *
+ * ```js
+ * // Listen to events
+ * editor.on('run', () => { ... });
+ *
+ * // Use the API
+ * const commands = editor.Commands;
+ * commands.add(...);
+ * ```
+ *
+ ** ## Available Events
+ * * `run:{commandName}` - Triggered when some command is called to run (eg. editor.runCommand('preview'))
+ * * `stop:{commandName}` - Triggered when some command is called to stop (eg. editor.stopCommand('preview'))
+ * * `run:{commandName}:before` - Triggered before the command is called
+ * * `stop:{commandName}:before` - Triggered before the command is called to stop
+ * * `abort:{commandName}` - Triggered when the command execution is aborted (`editor.on(`run:preview:before`, opts => opts.abort = 1);`)
+ * * `run` - Triggered on run of any command. The id and the result are passed as arguments to the callback
+ * * `stop` - Triggered on stop of any command. The id and the result are passed as arguments to the callback
+ *
+ * ## Methods
+ * * [add](#add)
+ * * [get](#get)
+ * * [getAll](#getall)
+ * * [extend](#extend)
+ * * [has](#has)
+ * * [run](#run)
+ * * [stop](#stop)
+ * * [isActive](#isactive)
+ * * [getActive](#getactive)
+ *
+ * @module Commands
+ */
+var commands_extends = (undefined && undefined.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+var commands_assign = (undefined && undefined.__assign) || function () {
+    commands_assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return commands_assign.apply(this, arguments);
+};
+var commands_spreadArray = (undefined && undefined.__spreadArray) || function (to, from, pack) {
+    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+        if (ar || !(i in from)) {
+            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+            ar[i] = from[i];
+        }
+    }
+    return to.concat(ar || Array.prototype.slice.call(from));
+};
+
+
+
+
+
+var commandsDef = [
+    ['preview', 'Preview', 'preview'],
+    ['resize', 'Resize', 'resize'],
+    ['fullscreen', 'Fullscreen', 'fullscreen'],
+    ['copy', 'CopyComponent'],
+    ['paste', 'PasteComponent'],
+    ['canvas-move', 'CanvasMove'],
+    ['canvas-clear', 'CanvasClear'],
+    ['open-code', 'ExportTemplate', 'export-template'],
+    ['open-layers', 'OpenLayers', 'open-layers'],
+    ['open-styles', 'OpenStyleManager', 'open-sm'],
+    ['open-traits', 'OpenTraitManager', 'open-tm'],
+    ['open-blocks', 'OpenBlocks', 'open-blocks'],
+    ['open-assets', 'OpenAssets', 'open-assets'],
+    ['component-select', 'SelectComponent', 'select-comp'],
+    ['component-outline', 'SwitchVisibility', 'sw-visibility'],
+    ['component-offset', 'ShowOffset', 'show-offset'],
+    ['component-move', 'MoveComponent', 'move-comp'],
+    ['component-next', 'ComponentNext'],
+    ['component-prev', 'ComponentPrev'],
+    ['component-enter', 'ComponentEnter'],
+    ['component-exit', 'ComponentExit', 'select-parent'],
+    ['component-delete', 'ComponentDelete'],
+    ['component-style-clear', 'ComponentStyleClear'],
+    ['component-drag', 'ComponentDrag'],
+];
+var defComOptions = { preserveSelected: 1 };
+var getOnComponentDragStart = function (em) { return function (data) { return em.trigger("".concat(eventDrag, ":start"), data); }; };
+var getOnComponentDrag = function (em) { return function (data) { return em.trigger(eventDrag, data); }; };
+var getOnComponentDragEnd = function (em, targets, opts) {
+    if (opts === void 0) { opts = {}; }
+    return function (a, b, data) {
+        targets.forEach(function (trg) { return trg.set('status', trg.get('selectable') ? 'selected' : ''); });
+        em.setSelected(targets);
+        targets[0].emitUpdate();
+        em.trigger("".concat(eventDrag, ":end"), data);
+        // Defer selectComponent in order to prevent canvas "freeze" #2692
+        setTimeout(function () { return em.runDefault(defComOptions); });
+        // Dirty patch to prevent parent selection on drop
+        (opts.altMode || data.cancelled) && em.set('_cmpDrag', 1);
+    };
+};
+var CommandsModule = /** @class */ (function (_super) {
+    commands_extends(CommandsModule, _super);
+    /**
+     * @private
+     */
+    function CommandsModule(em) {
+        var _this = _super.call(this, em, 'Commands', commands_config_config) || this;
+        _this.CommandAbstract = CommandAbstract["default"];
+        _this.defaultCommands = {};
+        _this.commands = {};
+        _this.active = {};
+        var config = _this.config;
+        var ppfx = config.pStylePrefix;
+        var defaultCommands = _this.defaultCommands;
+        if (ppfx) {
+            config.stylePrefix = ppfx + config.stylePrefix;
+        }
+        // Load commands passed via configuration
+        Object.keys(config.defaults).forEach(function (k) {
+            var obj = config.defaults[k];
+            if (obj.id)
+                _this.add(obj.id, obj);
+        });
+        defaultCommands['tlb-delete'] = {
+            run: function (ed) {
+                return ed.runCommand('core:component-delete');
+            },
+        };
+        defaultCommands['tlb-clone'] = {
+            run: function (ed) {
+                ed.runCommand('core:copy');
+                ed.runCommand('core:paste', { action: 'clone-component' });
+            },
+        };
+        defaultCommands['tlb-move'] = {
+            run: function (ed, s, opts) {
+                var _a;
+                if (opts === void 0) { opts = {}; }
+                var dragger;
+                var em = ed.getModel();
+                var event = opts.event;
+                var trg = opts.target;
+                var trgs = trg ? [trg] : commands_spreadArray([], ed.getSelectedAll(), true);
+                var targets = trgs.map(function (trg) { var _a, _b; return ((_b = (_a = trg.delegate) === null || _a === void 0 ? void 0 : _a.move) === null || _b === void 0 ? void 0 : _b.call(_a, trg)) || trg; }).filter(Boolean);
+                var target = targets[0];
+                var nativeDrag = (event === null || event === void 0 ? void 0 : event.type) === 'dragstart';
+                var modes = ['absolute', 'translate'];
+                if (!(target === null || target === void 0 ? void 0 : target.get('draggable'))) {
+                    return em.logWarning('The element is not draggable');
+                }
+                var mode = target.get('dmode') || em.get('dmode');
+                var hideTlb = function () { return em.stopDefault(defComOptions); };
+                var altMode = (0,index_all.includes)(modes, mode);
+                targets.forEach(function (trg) { return trg.trigger('disable'); });
+                // Without setTimeout the ghost image disappears
+                nativeDrag ? setTimeout(hideTlb, 0) : hideTlb();
+                var onStart = getOnComponentDragStart(em);
+                var onDrag = getOnComponentDrag(em);
+                var onEnd = getOnComponentDragEnd(em, targets, { altMode: altMode });
+                if (altMode) {
+                    // TODO move grabbing func in editor/canvas from the Sorter
+                    dragger = ed.runCommand('core:component-drag', {
+                        guidesInfo: 1,
+                        mode: mode,
+                        target: target,
+                        onStart: onStart,
+                        onDrag: onDrag,
+                        onEnd: onEnd,
+                        event: event,
+                    });
+                }
+                else {
+                    if (nativeDrag) {
+                        event.dataTransfer.setDragImage((_a = target.view) === null || _a === void 0 ? void 0 : _a.el, 0, 0);
+                        //sel.set('status', 'freezed');
+                    }
+                    var cmdMove = ed.Commands.get('move-comp');
+                    cmdMove.onStart = onStart;
+                    cmdMove.onDrag = onDrag;
+                    cmdMove.onEndMoveFromModel = onEnd;
+                    // @ts-ignore
+                    cmdMove.initSorterFromModels(targets);
+                }
+                targets.filter(function (sel) { return sel.get('selectable'); }).forEach(function (sel) { return sel.set('status', 'freezed-selected'); });
+            },
+        };
+        // Core commands
+        defaultCommands['core:undo'] = function (e) { return e.UndoManager.undo(); };
+        defaultCommands['core:redo'] = function (e) { return e.UndoManager.redo(); };
+        commandsDef.forEach(function (item) {
+            var oldCmd = item[2];
+            var cmd = __webpack_require__(828)("./".concat(item[1])).default;
+            var cmdName = "core:".concat(item[0]);
+            defaultCommands[cmdName] = cmd;
+            if (oldCmd) {
+                defaultCommands[oldCmd] = cmd;
+                // Propogate old commands (can be removed once we stop to call old commands)
+                ['run', 'stop'].forEach(function (name) {
+                    em.on("".concat(name, ":").concat(oldCmd), function () {
+                        var args = [];
+                        for (var _i = 0; _i < arguments.length; _i++) {
+                            args[_i] = arguments[_i];
+                        }
+                        return em.trigger.apply(em, commands_spreadArray(["".concat(name, ":").concat(cmdName)], args, false));
+                    });
+                });
+            }
+        });
+        // @ts-ignore TODO check where it's used
+        config.model = em.Canvas;
+        for (var id in defaultCommands) {
+            _this.add(id, defaultCommands[id]);
+        }
+        return _this;
+    }
+    /**
+     * Add new command to the collection
+     * @param	{string} id Command's ID
+     * @param	{Object|Function} command Object representing your command,
+     *  By passing just a function it's intended as a stateless command
+     *  (just like passing an object with only `run` method).
+     * @return {this}
+     * @example
+     * commands.add('myCommand', {
+     * 	run(editor, sender) {
+     * 		alert('Hello world!');
+     * 	},
+     * 	stop(editor, sender) {
+     * 	},
+     * });
+     * // As a function
+     * commands.add('myCommand2', editor => { ... });
+     * */
+    CommandsModule.prototype.add = function (id, command) {
+        var result = (0,index_all.isFunction)(command) ? { run: command } : command;
+        if (!result.stop) {
+            result.noStop = true;
+        }
+        delete result.initialize;
+        result.id = id;
+        this.commands[id] = CommandAbstract["default"].extend(result);
+        return this;
+    };
+    /**
+     * Get command by ID
+     * @param	{string}	id Command's ID
+     * @return {Object} Object representing the command
+     * @example
+     * var myCommand = commands.get('myCommand');
+     * myCommand.run();
+     * */
+    CommandsModule.prototype.get = function (id) {
+        var command = this.commands[id];
+        if ((0,index_all.isFunction)(command)) {
+            command = new command(this.config);
+            this.commands[id] = command;
+        }
+        else if (!command) {
+            this.em.logWarning("'".concat(id, "' command not found"));
+        }
+        return command;
+    };
+    /**
+     * Extend the command. The command to extend should be defined as an object
+     * @param	{string}	id Command's ID
+     * @param {Object} Object with the new command functions
+     * @returns {this}
+     * @example
+     * commands.extend('old-command', {
+     *  someInnerFunction() {
+     *  // ...
+     *  }
+     * });
+     * */
+    CommandsModule.prototype.extend = function (id, cmd) {
+        if (cmd === void 0) { cmd = {}; }
+        var command = this.get(id);
+        if (command) {
+            var cmdObj = commands_assign(commands_assign({}, command.constructor.prototype), cmd);
+            this.add(id, cmdObj);
+            // Extend also old name commands if exist
+            var oldCmd = commandsDef.filter(function (cmd) { return "core:".concat(cmd[0]) === id && cmd[2]; })[0];
+            oldCmd && this.add(oldCmd[2], cmdObj);
+        }
+        return this;
+    };
+    /**
+     * Check if command exists
+     * @param	{string}	id Command's ID
+     * @return {Boolean}
+     * */
+    CommandsModule.prototype.has = function (id) {
+        return !!this.commands[id];
+    };
+    /**
+     * Get an object containing all the commands
+     * @return {Object}
+     */
+    CommandsModule.prototype.getAll = function () {
+        return this.commands;
+    };
+    /**
+     * Execute the command
+     * @param {String} id Command ID
+     * @param {Object} [options={}] Options
+     * @return {*} The return is defined by the command
+     * @example
+     * commands.run('myCommand', { someOption: 1 });
+     */
+    CommandsModule.prototype.run = function (id, options) {
+        if (options === void 0) { options = {}; }
+        return this.runCommand(this.get(id), options);
+    };
+    /**
+     * Stop the command
+     * @param {String} id Command ID
+     * @param {Object} [options={}] Options
+     * @return {*} The return is defined by the command
+     * @example
+     * commands.stop('myCommand', { someOption: 1 });
+     */
+    CommandsModule.prototype.stop = function (id, options) {
+        if (options === void 0) { options = {}; }
+        return this.stopCommand(this.get(id), options);
+    };
+    /**
+     * Check if the command is active. You activate commands with `run`
+     * and disable them with `stop`. If the command was created without `stop`
+     * method it can't be registered as active
+     * @param  {String}  id Command id
+     * @return {Boolean}
+     * @example
+     * const cId = 'some-command';
+     * commands.run(cId);
+     * commands.isActive(cId);
+     * // -> true
+     * commands.stop(cId);
+     * commands.isActive(cId);
+     * // -> false
+     */
+    CommandsModule.prototype.isActive = function (id) {
+        return this.getActive().hasOwnProperty(id);
+    };
+    /**
+     * Get all active commands
+     * @return {Object}
+     * @example
+     * console.log(commands.getActive());
+     * // -> { someCommand: itsLastReturn, anotherOne: ... };
+     */
+    CommandsModule.prototype.getActive = function () {
+        return this.active;
+    };
+    /**
+     * Run command via its object
+     * @param  {Object} command
+     * @param {Object} options
+     * @return {*} Result of the command
+     * @private
+     */
+    CommandsModule.prototype.runCommand = function (command, options) {
+        if (options === void 0) { options = {}; }
+        var result;
+        if (command && command.run) {
+            var _a = this, em = _a.em, config = _a.config;
+            var id = command.id;
+            var editor = em.Editor;
+            if (!this.isActive(id) || options.force || !config.strict) {
+                // @ts-ignore
+                result = editor && command.callRun(editor, options);
+                if (id && command.stop && !command.noStop && !options.abort) {
+                    this.active[id] = result;
+                }
+            }
+        }
+        return result;
+    };
+    /**
+     * Stop the command
+     * @param  {Object} command
+     * @param {Object} options
+     * @return {*} Result of the command
+     * @private
+     */
+    CommandsModule.prototype.stopCommand = function (command, options) {
+        if (options === void 0) { options = {}; }
+        var result;
+        if (command && command.run) {
+            var _a = this, em = _a.em, config = _a.config;
+            var id = command.id;
+            var editor = em.Editor;
+            if (this.isActive(id) || options.force || !config.strict) {
+                if (id)
+                    delete this.active[id];
+                // @ts-ignore
+                result = command.callStop(editor, options);
+            }
+        }
+        return result;
+    };
+    /**
+     * Create anonymous Command instance
+     * @param {Object} command Command object
+     * @return {Command}
+     * @private
+     * */
+    CommandsModule.prototype.create = function (command) {
+        if (!command.stop)
+            command.noStop = true;
+        var cmd = CommandAbstract["default"].extend(command);
+        return new cmd(this.config);
+    };
+    CommandsModule.prototype.destroy = function () {
+        this.defaultCommands = {};
+        this.commands = {};
+        this.active = {};
+    };
+    return CommandsModule;
+}(abstract_Module));
+/* harmony default export */ const commands = (CommandsModule);
+
 ;// CONCATENATED MODULE: ./src/navigator/view/ItemView.ts
 var ItemView_extends = (undefined && undefined.__extends) || (function () {
     var extendStatics = function (d, b) {
@@ -45088,18 +45606,18 @@ var ItemView = /** @class */ (function (_super) {
         var count = module.getComponents(model).length;
         var addClass = !count ? this.clsNoChild : '';
         var clsTitle = "".concat(this.clsTitle, " ").concat(addClass);
-        var clsTitleC = "".concat(this.clsTitleC, " ").concat(ppfx, "one-bg");
+        var clsTitleC = "".concat(this.clsTitleC);
         var clsInput = "".concat(this.inputNameCls, " ").concat(clsNoEdit, " ").concat(ppfx, "no-app");
-        var level = opt.level + 1;
-        var gut = "".concat(30 + level * 10, "px");
+        var level = opt.level || 0;
+        var gut = "".concat(level * 10, "px");
         var name = model.getName();
         var icon = model.getIcon();
         var clsBase = "".concat(pfx, "layer");
         var icons = (em === null || em === void 0 ? void 0 : em.getConfig()).icons;
         var _b = icons, move = _b.move, eye = _b.eye, eyeOff = _b.eyeOff, chevron = _b.chevron;
-        return "\n      ".concat(hidable
-            ? "<i class=\"".concat(pfx, "layer-vis\" data-toggle-visible>\n            <i class=\"").concat(pfx, "layer-vis-on\">").concat(eye, "</i>\n            <i class=\"").concat(pfx, "layer-vis-off\">").concat(eyeOff, "</i>\n          </i>")
-            : '', "\n      <div class=\"").concat(clsTitleC, "\">\n        <div class=\"").concat(clsTitle, "\" style=\"padding-left: ").concat(gut, "\" data-toggle-select>\n          <div class=\"").concat(pfx, "layer-title-inn\" title=\"").concat(name, "\">\n            <i class=\"").concat(this.clsCaret, "\" data-toggle-open>").concat(chevron, "</i>\n            ").concat(icon ? "<span class=\"".concat(clsBase, "__icon\">").concat(icon, "</span>") : '', "\n            <span class=\"").concat(clsInput, "\" data-name>").concat(name, "</span>\n          </div>\n        </div>\n      </div>\n      <div class=\"").concat(this.clsCount, "\" data-count>").concat(count || '', "</div>\n      <div class=\"").concat(this.clsMove, "\" data-toggle-move>").concat(move || '', "</div>\n      <div class=\"").concat(this.clsChildren, "\"></div>");
+        return "\n      <div class=\"".concat(pfx, "layer-item ").concat(ppfx, "one-bg\" data-toggle-select>\n        <div class=\"").concat(pfx, "layer-item-left\">\n          ").concat(hidable
+            ? "<i class=\"".concat(pfx, "layer-vis\" data-toggle-visible>\n                <i class=\"").concat(pfx, "layer-vis-on\">").concat(eye, "</i>\n                <i class=\"").concat(pfx, "layer-vis-off\">").concat(eyeOff, "</i>\n              </i>")
+            : '', "\n          <div class=\"").concat(clsTitleC, "\">\n            <div class=\"").concat(clsTitle, "\" style=\"padding-left: ").concat(gut, "\">\n              <div class=\"").concat(pfx, "layer-title-inn\" title=\"").concat(name, "\">\n                <i class=\"").concat(this.clsCaret, "\" data-toggle-open>").concat(chevron, "</i>\n                  ").concat(icon ? "<span class=\"".concat(clsBase, "__icon\">").concat(icon, "</span>") : '', "\n                <span class=\"").concat(clsInput, "\" data-name>").concat(name, "</span>\n              </div>\n            </div>\n          </div>\n        </div>\n        <div class=\"").concat(pfx, "layer-item-right\">\n          ").concat(count ? "<div class=\"".concat(this.clsCount, "\" data-count>").concat(count || '', "</div>") : '', "\n          <div class=\"").concat(this.clsMove, "\" data-toggle-move>").concat(move || '', "</div>\n        </div>\n      </div>\n      <div class=\"").concat(this.clsChildren, "\"></div>\n    ");
     };
     Object.defineProperty(ItemView.prototype, "em", {
         get: function () {
@@ -45152,7 +45670,7 @@ var ItemView = /** @class */ (function (_super) {
     };
     ItemView.prototype.getVisibilityEl = function () {
         if (!this.eyeEl) {
-            this.eyeEl = this.$el.children(".".concat(this.pfx, "layer-vis"));
+            this.eyeEl = this.$el.children('[data-toggle-select]').find('[data-toggle-visible]');
         }
         return this.eyeEl;
     };
@@ -45171,7 +45689,7 @@ var ItemView = /** @class */ (function (_super) {
      * @return 	void
      * */
     ItemView.prototype.toggleVisibility = function (ev) {
-        ev === null || ev === void 0 ? void 0 : ev.stopPropagation();
+        ev === null || ev === void 0 ? void 0 : ev.stopImmediatePropagation();
         var _a = this, module = _a.module, model = _a.model;
         module.setVisible(model, !module.isVisible(model));
     };
@@ -45280,15 +45798,19 @@ var ItemView = /** @class */ (function (_super) {
      * @param	Event
      * */
     ItemView.prototype.startSort = function (ev) {
+        var _a, _b, _c;
         ev.stopPropagation();
-        var _a = this, em = _a.em, sorter = _a.sorter;
+        var _d = this, em = _d.em, sorter = _d.sorter, model = _d.model;
         // Right or middel click
         if (ev.button && ev.button !== 0)
             return;
         if (sorter) {
-            sorter.onStart = function (data) { return em.trigger("".concat(eventDrag, ":start"), data); };
-            sorter.onMoveClb = function (data) { return em.trigger(eventDrag, data); };
-            sorter.startSort(ev.target);
+            var toMove = ((_b = (_a = model.delegate) === null || _a === void 0 ? void 0 : _a.move) === null || _b === void 0 ? void 0 : _b.call(_a, model)) || model;
+            sorter.onStart = getOnComponentDragStart(em);
+            sorter.onMoveClb = getOnComponentDrag(em);
+            sorter.onEndMove = getOnComponentDragEnd(em, [toMove]);
+            var itemEl = ((_c = toMove.viewLayer) === null || _c === void 0 ? void 0 : _c.el) || ev.target;
+            sorter.startSort(itemEl);
         }
     };
     /**
@@ -45332,7 +45854,7 @@ var ItemView = /** @class */ (function (_super) {
     ItemView.prototype.setRoot = function (el) {
         var _a;
         el = (0,index_all.isString)(el) ? (_a = this.em.getWrapper()) === null || _a === void 0 ? void 0 : _a.find(el)[0] : el;
-        var model = (0,mixins.getModel)(el, 0);
+        var model = (0,mixins.getModel)(el);
         if (!model)
             return;
         this.stopListening();
@@ -48737,10 +49259,6 @@ var Sorter = /** @class */ (function (_super) {
         this.plh.style.display = 'none';
         if (src) {
             srcModel = this.getSourceModel();
-            if (this.selectOnEnd && srcModel && srcModel.set) {
-                srcModel.set('status', '');
-                srcModel.set('status', 'selected');
-            }
         }
         if (this.moved && target) {
             var toMove = this.toMove;
@@ -49222,8 +49740,6 @@ var Resizer = /** @class */ (function () {
             var elStyle = el.style;
             elStyle[keyWidth] = rect.w + unitWidth;
             elStyle[keyHeight] = rect.h + unitHeight;
-            elStyle.top = rect.t + unitHeight;
-            elStyle.left = rect.l + unitWidth;
         }
         this.updateContainer();
     };
@@ -52506,9 +53022,10 @@ var UndoManagerModule = /** @class */ (function (_super) {
         return result;
     };
     UndoManagerModule.prototype.skip = function (clb) {
-        this.stop();
+        var isTracking = !!this.um.isTracking();
+        isTracking && this.stop();
         clb();
-        this.start();
+        isTracking && this.start();
     };
     UndoManagerModule.prototype.getGroupedStack = function () {
         var result = {};
@@ -52936,7 +53453,7 @@ var RichTextEditor = /** @class */ (function () {
         var _c = this, em = _c.em, doc = _c.doc, el = _c.el;
         var sel = doc.getSelection();
         if (sel && sel.rangeCount) {
-            var model_1 = (0,mixins.getModel)(el);
+            var model_1 = (0,mixins.getComponentModel)(el) || em.getSelected();
             var node = doc.createElement('div');
             var range_1 = sel.getRangeAt(0);
             range_1.deleteContents();
@@ -53424,459 +53941,6 @@ var RichTextEditorModule = /** @class */ (function (_super) {
 }(abstract_Module));
 /* harmony default export */ const rich_text_editor = (RichTextEditorModule);
 
-// EXTERNAL MODULE: ./src/commands/view/CommandAbstract.ts
-var CommandAbstract = __webpack_require__(790);
-;// CONCATENATED MODULE: ./src/commands/config/config.ts
-var commands_config_config_config = {
-    stylePrefix: 'com-',
-    defaults: {},
-    strict: true,
-};
-/* harmony default export */ const commands_config_config = (commands_config_config_config);
-
-;// CONCATENATED MODULE: ./src/commands/index.ts
-/**
- * You can customize the initial state of the module from the editor initialization, by passing the following [Configuration Object](https://github.com/GrapesJS/grapesjs/blob/master/src/commands/config/config.ts)
- * ```js
- * const editor = grapesjs.init({
- *  commands: {
- *    // options
- *  }
- * })
- * ```
- *
- * Once the editor is instantiated you can use its API and listen to its events. Before using these methods, you should get the module from the instance.
- *
- * ```js
- * // Listen to events
- * editor.on('run', () => { ... });
- *
- * // Use the API
- * const commands = editor.Commands;
- * commands.add(...);
- * ```
- *
- ** ## Available Events
- * * `run:{commandName}` - Triggered when some command is called to run (eg. editor.runCommand('preview'))
- * * `stop:{commandName}` - Triggered when some command is called to stop (eg. editor.stopCommand('preview'))
- * * `run:{commandName}:before` - Triggered before the command is called
- * * `stop:{commandName}:before` - Triggered before the command is called to stop
- * * `abort:{commandName}` - Triggered when the command execution is aborted (`editor.on(`run:preview:before`, opts => opts.abort = 1);`)
- * * `run` - Triggered on run of any command. The id and the result are passed as arguments to the callback
- * * `stop` - Triggered on stop of any command. The id and the result are passed as arguments to the callback
- *
- * ## Methods
- * * [add](#add)
- * * [get](#get)
- * * [getAll](#getall)
- * * [extend](#extend)
- * * [has](#has)
- * * [run](#run)
- * * [stop](#stop)
- * * [isActive](#isactive)
- * * [getActive](#getactive)
- *
- * @module Commands
- */
-var commands_extends = (undefined && undefined.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-var commands_assign = (undefined && undefined.__assign) || function () {
-    commands_assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return commands_assign.apply(this, arguments);
-};
-var commands_spreadArray = (undefined && undefined.__spreadArray) || function (to, from, pack) {
-    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
-        if (ar || !(i in from)) {
-            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
-            ar[i] = from[i];
-        }
-    }
-    return to.concat(ar || Array.prototype.slice.call(from));
-};
-
-
-
-
-
-var commandsDef = [
-    ['preview', 'Preview', 'preview'],
-    ['resize', 'Resize', 'resize'],
-    ['fullscreen', 'Fullscreen', 'fullscreen'],
-    ['copy', 'CopyComponent'],
-    ['paste', 'PasteComponent'],
-    ['canvas-move', 'CanvasMove'],
-    ['canvas-clear', 'CanvasClear'],
-    ['open-code', 'ExportTemplate', 'export-template'],
-    ['open-layers', 'OpenLayers', 'open-layers'],
-    ['open-styles', 'OpenStyleManager', 'open-sm'],
-    ['open-traits', 'OpenTraitManager', 'open-tm'],
-    ['open-blocks', 'OpenBlocks', 'open-blocks'],
-    ['open-assets', 'OpenAssets', 'open-assets'],
-    ['component-select', 'SelectComponent', 'select-comp'],
-    ['component-outline', 'SwitchVisibility', 'sw-visibility'],
-    ['component-offset', 'ShowOffset', 'show-offset'],
-    ['component-move', 'MoveComponent', 'move-comp'],
-    ['component-next', 'ComponentNext'],
-    ['component-prev', 'ComponentPrev'],
-    ['component-enter', 'ComponentEnter'],
-    ['component-exit', 'ComponentExit', 'select-parent'],
-    ['component-delete', 'ComponentDelete'],
-    ['component-style-clear', 'ComponentStyleClear'],
-    ['component-drag', 'ComponentDrag'],
-];
-var CommandsModule = /** @class */ (function (_super) {
-    commands_extends(CommandsModule, _super);
-    /**
-     * @private
-     */
-    function CommandsModule(em) {
-        var _this = _super.call(this, em, 'Commands', commands_config_config) || this;
-        _this.CommandAbstract = CommandAbstract["default"];
-        _this.defaultCommands = {};
-        _this.commands = {};
-        _this.active = {};
-        var config = _this.config;
-        var ppfx = config.pStylePrefix;
-        var defaultCommands = _this.defaultCommands;
-        if (ppfx) {
-            config.stylePrefix = ppfx + config.stylePrefix;
-        }
-        // Load commands passed via configuration
-        Object.keys(config.defaults).forEach(function (k) {
-            var obj = config.defaults[k];
-            if (obj.id)
-                _this.add(obj.id, obj);
-        });
-        defaultCommands['tlb-delete'] = {
-            run: function (ed) {
-                return ed.runCommand('core:component-delete');
-            },
-        };
-        defaultCommands['tlb-clone'] = {
-            run: function (ed) {
-                ed.runCommand('core:copy');
-                ed.runCommand('core:paste', { action: 'clone-component' });
-            },
-        };
-        defaultCommands['tlb-move'] = {
-            run: function (ed, sender, opts) {
-                if (opts === void 0) { opts = {}; }
-                var dragger;
-                var em = ed.getModel();
-                var event = opts && opts.event;
-                var target = opts.target;
-                var sel = target || ed.getSelected();
-                var selAll = target ? [target] : commands_spreadArray([], ed.getSelectedAll(), true);
-                var nativeDrag = event && event.type == 'dragstart';
-                var defComOptions = { preserveSelected: 1 };
-                var modes = ['absolute', 'translate'];
-                if (!sel || !sel.get('draggable')) {
-                    return em.logWarning('The element is not draggable');
-                }
-                var mode = sel.get('dmode') || em.get('dmode');
-                var hideTlb = function () { return em.stopDefault(defComOptions); };
-                var altMode = (0,index_all.includes)(modes, mode);
-                selAll.forEach(function (sel) { return sel.trigger('disable'); });
-                // Without setTimeout the ghost image disappears
-                nativeDrag ? setTimeout(hideTlb, 0) : hideTlb();
-                var onStart = function (data) {
-                    em.trigger("".concat(eventDrag, ":start"), data);
-                };
-                var onDrag = function (data) {
-                    em.trigger(eventDrag, data);
-                };
-                var onEnd = function (e, opts, data) {
-                    selAll.forEach(function (sel) { return sel.set('status', 'selected'); });
-                    ed.select(selAll);
-                    sel.emitUpdate();
-                    em.trigger("".concat(eventDrag, ":end"), data);
-                    // Defer selectComponent in order to prevent canvas "freeze" #2692
-                    setTimeout(function () { return em.runDefault(defComOptions); });
-                    // Dirty patch to prevent parent selection on drop
-                    (altMode || data.cancelled) && em.set('_cmpDrag', 1);
-                };
-                if (altMode) {
-                    // TODO move grabbing func in editor/canvas from the Sorter
-                    dragger = ed.runCommand('core:component-drag', {
-                        guidesInfo: 1,
-                        mode: mode,
-                        target: sel,
-                        onStart: onStart,
-                        onDrag: onDrag,
-                        onEnd: onEnd,
-                        event: event,
-                    });
-                }
-                else {
-                    if (nativeDrag) {
-                        event.dataTransfer.setDragImage(sel.view.el, 0, 0);
-                        //sel.set('status', 'freezed');
-                    }
-                    var cmdMove = ed.Commands.get('move-comp');
-                    cmdMove.onStart = onStart;
-                    cmdMove.onDrag = onDrag;
-                    cmdMove.onEndMoveFromModel = onEnd;
-                    // @ts-ignore
-                    cmdMove.initSorterFromModels(selAll);
-                }
-                selAll.forEach(function (sel) { return sel.set('status', 'freezed-selected'); });
-            },
-        };
-        // Core commands
-        defaultCommands['core:undo'] = function (e) { return e.UndoManager.undo(); };
-        defaultCommands['core:redo'] = function (e) { return e.UndoManager.redo(); };
-        commandsDef.forEach(function (item) {
-            var oldCmd = item[2];
-            var cmd = __webpack_require__(828)("./".concat(item[1])).default;
-            var cmdName = "core:".concat(item[0]);
-            defaultCommands[cmdName] = cmd;
-            if (oldCmd) {
-                defaultCommands[oldCmd] = cmd;
-                // Propogate old commands (can be removed once we stop to call old commands)
-                ['run', 'stop'].forEach(function (name) {
-                    em.on("".concat(name, ":").concat(oldCmd), function () {
-                        var args = [];
-                        for (var _i = 0; _i < arguments.length; _i++) {
-                            args[_i] = arguments[_i];
-                        }
-                        return em.trigger.apply(em, commands_spreadArray(["".concat(name, ":").concat(cmdName)], args, false));
-                    });
-                });
-            }
-        });
-        // @ts-ignore TODO check where it's used
-        config.model = em.Canvas;
-        for (var id in defaultCommands) {
-            _this.add(id, defaultCommands[id]);
-        }
-        return _this;
-    }
-    /**
-     * Add new command to the collection
-     * @param	{string} id Command's ID
-     * @param	{Object|Function} command Object representing your command,
-     *  By passing just a function it's intended as a stateless command
-     *  (just like passing an object with only `run` method).
-     * @return {this}
-     * @example
-     * commands.add('myCommand', {
-     * 	run(editor, sender) {
-     * 		alert('Hello world!');
-     * 	},
-     * 	stop(editor, sender) {
-     * 	},
-     * });
-     * // As a function
-     * commands.add('myCommand2', editor => { ... });
-     * */
-    CommandsModule.prototype.add = function (id, command) {
-        var result = (0,index_all.isFunction)(command) ? { run: command } : command;
-        if (!result.stop) {
-            result.noStop = true;
-        }
-        delete result.initialize;
-        result.id = id;
-        this.commands[id] = CommandAbstract["default"].extend(result);
-        return this;
-    };
-    /**
-     * Get command by ID
-     * @param	{string}	id Command's ID
-     * @return {Object} Object representing the command
-     * @example
-     * var myCommand = commands.get('myCommand');
-     * myCommand.run();
-     * */
-    CommandsModule.prototype.get = function (id) {
-        var command = this.commands[id];
-        if ((0,index_all.isFunction)(command)) {
-            command = new command(this.config);
-            this.commands[id] = command;
-        }
-        else if (!command) {
-            this.em.logWarning("'".concat(id, "' command not found"));
-        }
-        return command;
-    };
-    /**
-     * Extend the command. The command to extend should be defined as an object
-     * @param	{string}	id Command's ID
-     * @param {Object} Object with the new command functions
-     * @returns {this}
-     * @example
-     * commands.extend('old-command', {
-     *  someInnerFunction() {
-     *  // ...
-     *  }
-     * });
-     * */
-    CommandsModule.prototype.extend = function (id, cmd) {
-        if (cmd === void 0) { cmd = {}; }
-        var command = this.get(id);
-        if (command) {
-            var cmdObj = commands_assign(commands_assign({}, command.constructor.prototype), cmd);
-            this.add(id, cmdObj);
-            // Extend also old name commands if exist
-            var oldCmd = commandsDef.filter(function (cmd) { return "core:".concat(cmd[0]) === id && cmd[2]; })[0];
-            oldCmd && this.add(oldCmd[2], cmdObj);
-        }
-        return this;
-    };
-    /**
-     * Check if command exists
-     * @param	{string}	id Command's ID
-     * @return {Boolean}
-     * */
-    CommandsModule.prototype.has = function (id) {
-        return !!this.commands[id];
-    };
-    /**
-     * Get an object containing all the commands
-     * @return {Object}
-     */
-    CommandsModule.prototype.getAll = function () {
-        return this.commands;
-    };
-    /**
-     * Execute the command
-     * @param {String} id Command ID
-     * @param {Object} [options={}] Options
-     * @return {*} The return is defined by the command
-     * @example
-     * commands.run('myCommand', { someOption: 1 });
-     */
-    CommandsModule.prototype.run = function (id, options) {
-        if (options === void 0) { options = {}; }
-        return this.runCommand(this.get(id), options);
-    };
-    /**
-     * Stop the command
-     * @param {String} id Command ID
-     * @param {Object} [options={}] Options
-     * @return {*} The return is defined by the command
-     * @example
-     * commands.stop('myCommand', { someOption: 1 });
-     */
-    CommandsModule.prototype.stop = function (id, options) {
-        if (options === void 0) { options = {}; }
-        return this.stopCommand(this.get(id), options);
-    };
-    /**
-     * Check if the command is active. You activate commands with `run`
-     * and disable them with `stop`. If the command was created without `stop`
-     * method it can't be registered as active
-     * @param  {String}  id Command id
-     * @return {Boolean}
-     * @example
-     * const cId = 'some-command';
-     * commands.run(cId);
-     * commands.isActive(cId);
-     * // -> true
-     * commands.stop(cId);
-     * commands.isActive(cId);
-     * // -> false
-     */
-    CommandsModule.prototype.isActive = function (id) {
-        return this.getActive().hasOwnProperty(id);
-    };
-    /**
-     * Get all active commands
-     * @return {Object}
-     * @example
-     * console.log(commands.getActive());
-     * // -> { someCommand: itsLastReturn, anotherOne: ... };
-     */
-    CommandsModule.prototype.getActive = function () {
-        return this.active;
-    };
-    /**
-     * Run command via its object
-     * @param  {Object} command
-     * @param {Object} options
-     * @return {*} Result of the command
-     * @private
-     */
-    CommandsModule.prototype.runCommand = function (command, options) {
-        if (options === void 0) { options = {}; }
-        var result;
-        if (command && command.run) {
-            var _a = this, em = _a.em, config = _a.config;
-            var id = command.id;
-            var editor = em.Editor;
-            if (!this.isActive(id) || options.force || !config.strict) {
-                // @ts-ignore
-                result = editor && command.callRun(editor, options);
-                if (id && command.stop && !command.noStop && !options.abort) {
-                    this.active[id] = result;
-                }
-            }
-        }
-        return result;
-    };
-    /**
-     * Stop the command
-     * @param  {Object} command
-     * @param {Object} options
-     * @return {*} Result of the command
-     * @private
-     */
-    CommandsModule.prototype.stopCommand = function (command, options) {
-        if (options === void 0) { options = {}; }
-        var result;
-        if (command && command.run) {
-            var _a = this, em = _a.em, config = _a.config;
-            var id = command.id;
-            var editor = em.Editor;
-            if (this.isActive(id) || options.force || !config.strict) {
-                if (id)
-                    delete this.active[id];
-                // @ts-ignore
-                result = command.callStop(editor, options);
-            }
-        }
-        return result;
-    };
-    /**
-     * Create anonymous Command instance
-     * @param {Object} command Command object
-     * @return {Command}
-     * @private
-     * */
-    CommandsModule.prototype.create = function (command) {
-        if (!command.stop)
-            command.noStop = true;
-        var cmd = CommandAbstract["default"].extend(command);
-        return new cmd(this.config);
-    };
-    CommandsModule.prototype.destroy = function () {
-        this.defaultCommands = {};
-        this.commands = {};
-        this.active = {};
-    };
-    return CommandsModule;
-}(abstract_Module));
-/* harmony default export */ const commands = (CommandsModule);
-
 ;// CONCATENATED MODULE: ./src/style_manager/config/config.ts
 /* harmony default export */ const style_manager_config_config = ({
     sectors: [
@@ -54302,26 +54366,28 @@ var Property = /** @class */ (function (_super) {
         if (opts === void 0) { opts = {}; }
         var result = { value: value };
         var imp = '!important';
+        var fn = this.get('functionName') || '';
         if ((0,index_all.isString)(value) && value.indexOf(imp) !== -1) {
             result.value = value.replace(imp, '').trim();
             result.important = true;
         }
-        if (!this.get('functionName') && !opts.complete) {
+        if (!fn && !opts.complete) {
             return result;
         }
         var args = [];
-        var valueStr = "".concat(result.value);
+        var valueStr = "".concat(result.value).trim();
         var start = valueStr.indexOf('(') + 1;
-        var end = valueStr.lastIndexOf(')');
-        var functionName = valueStr.substring(0, start - 1);
-        if (functionName)
+        var functionName = fn || valueStr.substring(0, start - 1);
+        if (functionName) {
             result.functionName = functionName;
-        args.push(start);
-        // Will try even if the last closing parentheses is not found
-        if (end >= 0) {
-            args.push(end);
         }
-        result.value = String.prototype.substring.apply(valueStr, args);
+        if (!fn || valueStr.indexOf("".concat(fn, "(")) === 0) {
+            var end = valueStr.lastIndexOf(')');
+            args.push(start);
+            // Will try even if the last closing parentheses is not found
+            end >= 0 && args.push(end);
+            result.value = String.prototype.substring.apply(valueStr, args);
+        }
         if (opts.numeric) {
             var num = parseFloat(result.value);
             result.unit = result.value.replace(num, '');
@@ -58629,42 +58695,42 @@ var StyleManager = /** @class */ (function (_super) {
         var em = this.em;
         var skipAdd = options.skipAdd;
         if (em && (model === null || model === void 0 ? void 0 : model.toHTML)) {
-            var config = em.getConfig();
+            var config_1 = em.getConfig();
             var um = em.UndoManager;
-            var cssC = em.Css;
+            var cssC_1 = em.Css;
             var sm = em.Selectors;
             var smConf = sm ? sm.getConfig() : {};
-            var state = !config.devicePreviewMode ? em.get('state') : '';
+            var state_1 = !config_1.devicePreviewMode ? em.get('state') : '';
             var classes = model.get('classes');
-            var valid = classes.getStyleable();
-            var hasClasses = valid.length;
-            var useClasses = !smConf.componentFirst || options.useClasses;
-            var addOpts = { noCount: 1 };
-            var opts = { state: state, addOpts: addOpts };
-            var rule = void 0;
-            // I stop undo manager here as after adding the CSSRule (generally after
+            var valid_1 = classes.getStyleable();
+            var hasClasses_1 = valid_1.length;
+            var useClasses_1 = !smConf.componentFirst || options.useClasses;
+            var addOpts_1 = { noCount: 1 };
+            var opts_1 = { state: state_1, addOpts: addOpts_1 };
+            // Skipping undo manager here as after adding the CSSRule (generally after
             // selecting the component) and calling undo() it will remove the rule from
             // the collection, therefore updating it in style manager will not affect it
             // #268
-            um.stop();
-            if (hasClasses && useClasses) {
-                var deviceW = em.getCurrentMedia();
-                rule = cssC.get(valid, state, deviceW);
-                if (!rule && !skipAdd) {
-                    rule = cssC.add(valid, state, deviceW, {}, addOpts);
+            um.skip(function () {
+                var rule;
+                if (hasClasses_1 && useClasses_1) {
+                    var deviceW = em.getCurrentMedia();
+                    rule = cssC_1.get(valid_1, state_1, deviceW);
+                    if (!rule && !skipAdd) {
+                        rule = cssC_1.add(valid_1, state_1, deviceW, {}, addOpts_1);
+                    }
                 }
-            }
-            else if (config.avoidInlineStyle) {
-                var id = model.getId();
-                rule = cssC.getIdRule(id, opts);
-                !rule && !skipAdd && (rule = cssC.setIdRule(id, {}, opts));
-                if (model.is('wrapper')) {
-                    // @ts-ignore
-                    rule.set('wrapper', 1, addOpts);
+                else if (config_1.avoidInlineStyle) {
+                    var id = model.getId();
+                    rule = cssC_1.getIdRule(id, opts_1);
+                    !rule && !skipAdd && (rule = cssC_1.setIdRule(id, {}, opts_1));
+                    if (model.is('wrapper')) {
+                        // @ts-ignore
+                        rule.set('wrapper', 1, addOpts_1);
+                    }
                 }
-            }
-            rule && (model = rule);
-            um.start();
+                rule && (model = rule);
+            });
         }
         return model;
     };
@@ -58796,18 +58862,16 @@ var StyleManager = /** @class */ (function (_super) {
     StyleManager.prototype.__emitCmpStyleUpdate = function (style, opts) {
         if (opts === void 0) { opts = {}; }
         var em = this.em;
-        var event = 'component:styleUpdate';
         // Ignore partial updates
         if (!style.__p) {
+            var allSel_1 = this.getSelectedAll();
             var cmp = opts.components || em.getSelectedAll();
             var cmps = Array.isArray(cmp) ? cmp : [cmp];
-            var newStyle = style_manager_assign({}, style);
-            delete newStyle.__p;
-            var styleKeys_1 = Object.keys(newStyle);
-            var optsToPass_1 = { style: newStyle };
-            cmps.forEach(function (component) {
-                em.trigger(event, component, optsToPass_1);
-                styleKeys_1.forEach(function (key) { return em.trigger("".concat(event, ":").concat(key), component, optsToPass_1); });
+            var newStyles_1 = style_manager_assign({}, style);
+            delete newStyles_1.__p;
+            cmps.forEach(function (cmp) {
+                // if cmp is part of selected, the event should already been triggered
+                return !allSel_1.includes(cmp) && cmp.__onStyleChange(newStyles_1);
             });
         }
     };
@@ -59363,7 +59427,7 @@ var EditorModel = /** @class */ (function (_super) {
     EditorModel.prototype.loadOnStart = function () {
         var _this = this;
         var _a = this.config, projectData = _a.projectData, headless = _a.headless;
-        var sm = this.get('StorageManager');
+        var sm = this.Storage;
         // In `onLoad`, the module will try to load the data from its configurations.
         this.toLoad.reverse().forEach(function (mdl) { return mdl.onLoad(); });
         // Stuff to do post load
@@ -59422,12 +59486,14 @@ var EditorModel = /** @class */ (function (_super) {
      * and there are unsaved changes
      * @private
      */
-    EditorModel.prototype.updateChanges = function () {
+    EditorModel.prototype.updateChanges = function (m, v, opts) {
         var _this = this;
-        var stm = this.get('StorageManager');
+        var stm = this.Storage;
         var changes = this.getDirtyCount();
-        this.updateItr && clearTimeout(this.updateItr);
-        this.updateItr = setTimeout(function () { return _this.trigger('update'); });
+        if (!opts.isClear) {
+            this.updateItr && clearTimeout(this.updateItr);
+            this.updateItr = setTimeout(function () { return _this.trigger('update'); });
+        }
         if (this.config.noticeOnUnload) {
             window.onbeforeunload = changes ? function () { return true; } : null;
         }
@@ -59522,7 +59588,7 @@ var EditorModel = /** @class */ (function (_super) {
     };
     /**
      * Select a component
-     * @param  {Component|HTMLElement} el Component to select
+     * @param  {Component} el Component to select
      * @param  {Object} [opts={}] Options, optional
      * @public
      */
@@ -59532,16 +59598,16 @@ var EditorModel = /** @class */ (function (_super) {
         var event = opts.event;
         var ctrlKey = event && (event.ctrlKey || event.metaKey);
         var shiftKey = (event || {}).shiftKey;
-        var els = ((0,index_all.isArray)(el) ? el : [el]).map(function (el) { return (0,mixins.getModel)(el, cash_dom["default"]); });
+        var models = ((0,index_all.isArray)(el) ? el : [el])
+            .map(function (cmp) { var _a, _b; return ((_b = (_a = cmp === null || cmp === void 0 ? void 0 : cmp.delegate) === null || _a === void 0 ? void 0 : _a.select) === null || _b === void 0 ? void 0 : _b.call(_a, cmp)) || cmp; })
+            .filter(Boolean);
         var selected = this.getSelectedAll();
         var mltSel = this.getConfig().multipleSelection;
-        var added;
         // If an array is passed remove all selected
         // expect those yet to be selected
         var multiple = (0,index_all.isArray)(el);
-        multiple && this.removeSelected(selected.filter(function (s) { return !(0,index_all.contains)(els, s); }));
-        els.forEach(function (el) {
-            var model = (0,mixins.getModel)(el, undefined);
+        multiple && this.removeSelected(selected.filter(function (s) { return !(0,index_all.contains)(models, s); }));
+        models.forEach(function (model) {
             if (model) {
                 _this.trigger('component:select:before', model, opts);
                 // Check for valid selectable
@@ -59562,7 +59628,7 @@ var EditorModel = /** @class */ (function (_super) {
                 return _this.toggleSelected(model);
             }
             else if (shiftKey && mltSel) {
-                _this.clearSelection(_this.get('Canvas').getWindow());
+                _this.clearSelection(_this.Canvas.getWindow());
                 var coll_1 = model.collection;
                 var index_1 = model.index();
                 var min_1, max_1;
@@ -59597,20 +59663,18 @@ var EditorModel = /** @class */ (function (_super) {
             }
             !multiple && _this.removeSelected(selected.filter(function (s) { return s !== model; }));
             _this.addSelected(model, opts);
-            added = model;
         });
     };
     /**
      * Add component to selection
-     * @param  {Component|HTMLElement} el Component to select
+     * @param  {Component|Array<Component>} component Component to select
      * @param  {Object} [opts={}] Options, optional
      * @public
      */
-    EditorModel.prototype.addSelected = function (el, opts) {
+    EditorModel.prototype.addSelected = function (component, opts) {
         var _this = this;
         if (opts === void 0) { opts = {}; }
-        var model = (0,mixins.getModel)(el, cash_dom["default"]);
-        var models = (0,index_all.isArray)(model) ? model : [model];
+        var models = (0,index_all.isArray)(component) ? component : [component];
         models.forEach(function (model) {
             var selected = _this.selected;
             if (!model ||
@@ -59633,14 +59697,13 @@ var EditorModel = /** @class */ (function (_super) {
     };
     /**
      * Remove component from selection
-     * @param  {Component|HTMLElement} el Component to select
+     * @param  {Component|Array<Component>} component Component to select
      * @param  {Object} [opts={}] Options, optional
      * @public
      */
-    EditorModel.prototype.removeSelected = function (el, opts) {
+    EditorModel.prototype.removeSelected = function (component, opts) {
         var _this = this;
         if (opts === void 0) { opts = {}; }
-        var component = (0,mixins.getModel)(el, cash_dom["default"]);
         this.selected.removeComponent(component, opts);
         var cmps = (0,index_all.isArray)(component) ? component : [component];
         cmps.forEach(function (component) {
@@ -59652,15 +59715,14 @@ var EditorModel = /** @class */ (function (_super) {
     };
     /**
      * Toggle component selection
-     * @param  {Component|HTMLElement} el Component to select
+     * @param  {Component|Array<Component>} component Component to select
      * @param  {Object} [opts={}] Options, optional
      * @public
      */
-    EditorModel.prototype.toggleSelected = function (el, opts) {
+    EditorModel.prototype.toggleSelected = function (component, opts) {
         var _this = this;
         if (opts === void 0) { opts = {}; }
-        var model = (0,mixins.getModel)(el, cash_dom["default"]);
-        var models = (0,index_all.isArray)(model) ? model : [model];
+        var models = (0,index_all.isArray)(component) ? component : [component];
         models.forEach(function (model) {
             if (_this.selected.hasComponent(model)) {
                 _this.removeSelected(model, opts);
@@ -59672,7 +59734,7 @@ var EditorModel = /** @class */ (function (_super) {
     };
     /**
      * Hover a component
-     * @param  {Component|HTMLElement} cmp Component to select
+     * @param  {Component|Array<Component>} cmp Component to select
      * @param  {Object} [opts={}] Options, optional
      * @private
      */
@@ -59701,26 +59763,23 @@ var EditorModel = /** @class */ (function (_super) {
             return upHovered();
         }
         var ev = 'component:hover';
-        var model = (0,mixins.getModel)(cmp, undefined);
-        if (!model)
-            return;
         opts.forceChange && upHovered();
-        this.trigger("".concat(ev, ":before"), model, opts);
+        this.trigger("".concat(ev, ":before"), cmp, opts);
         // Check for valid hoverable
-        if (!model.get('hoverable')) {
+        if (!cmp.get('hoverable')) {
             if (opts.useValid && !opts.abort) {
-                var parent_2 = model.parent();
+                var parent_2 = cmp.parent();
                 while (parent_2 && !parent_2.get('hoverable'))
                     parent_2 = parent_2.parent();
-                model = parent_2;
+                cmp = parent_2;
             }
             else {
                 return;
             }
         }
         if (!opts.abort) {
-            upHovered(model, opts);
-            this.trigger(ev, model, opts);
+            upHovered(cmp, opts);
+            this.trigger(ev, cmp, opts);
         }
     };
     EditorModel.prototype.getHovered = function () {
@@ -60012,7 +60071,7 @@ var EditorModel = /** @class */ (function (_super) {
         return this.get('changesCount');
     };
     EditorModel.prototype.clearDirtyCount = function () {
-        return this.set('changesCount', 0);
+        return this.set({ changesCount: 0 }, { isClear: true });
     };
     EditorModel.prototype.getZoomDecimal = function () {
         return this.Canvas.getZoomDecimal();
@@ -61248,7 +61307,7 @@ var grapesjs = {
     plugins: plugins,
     usePlugin: usePlugin,
     // @ts-ignore Will be replaced on build
-    version: '0.21.7',
+    version: '0.21.8',
     /**
      * Initialize the editor with passed options
      * @param {Object} config Configuration object

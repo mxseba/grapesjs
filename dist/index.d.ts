@@ -16,6 +16,7 @@ export type EventHandler = Backbone.EventHandler;
 export type ObjectHash = Backbone.ObjectHash;
 export type ObjectAny = Record<string, any>;
 export type ObjectStrings = Record<string, string>;
+export type Nullable = undefined | null | false;
 export type LiteralUnion<T, U> = T | (U & NOOP);
 export type Position = {
 	x: number;
@@ -54,6 +55,7 @@ declare enum CoordinatesTypes {
 	Screen = "screen",
 	World = "world"
 }
+export type PrevToNewIdMap = Record<string, string>;
 export interface SelectorProps {
 	name: string;
 	label?: string;
@@ -71,7 +73,9 @@ export interface SelectorProps {
  * @property {Boolean} [private=false] If true, it can't be seen by the Style Manager, but it will be rendered in the canvas and in export code.
  * @property {Boolean} [protected=false] If true, it can't be removed from the attached component.
  */
-export declare class Selector extends Model {
+export declare class Selector extends Model<SelectorProps & {
+	[key: string]: unknown;
+}> {
 	defaults(): {
 		name: string;
 		label: string;
@@ -101,6 +105,15 @@ export declare class Selector extends Model {
 	 */
 	toString(): string;
 	/**
+	 * Get selector name.
+	 * @returns {String}
+	 * @example
+	 * // Given such selector: { name: 'my-selector', label: 'My selector' }
+	 * console.log(selector.getName());
+	 * // -> `my-selector`
+	 */
+	getName(): string;
+	/**
 	 * Get selector label.
 	 * @returns {String}
 	 * @example
@@ -108,7 +121,7 @@ export declare class Selector extends Model {
 	 * console.log(selector.getLabel());
 	 * // -> `My selector`
 	 */
-	getLabel(): any;
+	getLabel(): string;
 	/**
 	 * Update selector label.
 	 * @param {String} label New label
@@ -150,6 +163,7 @@ export declare class Selectors extends Collection<Selector> {
 export type StyleProps = Record<string, string | string[]>;
 export type UpdateStyleOptions = ObjectAny & {
 	partial?: boolean;
+	addStyle?: StyleProps;
 };
 declare class StyleableModel<T extends ObjectHash = any> extends Model<T> {
 	/**
@@ -250,6 +264,12 @@ export interface DomComponentsConfig {
 	 * https://www.w3.org/TR/2011/WD-html-markup-20110113/syntax.html#void-elements
 	 */
 	voidElements?: string[];
+	/**
+	 * Experimental: Use the frame document for DOM element creation.
+	 * This option might be useful when elements require the local document context to
+	 * work properly (eg. Web Components).
+	 */
+	useFrameDoc?: boolean;
 }
 declare class ModuleModel<TModule extends IBaseModule<any> = Module, T extends ObjectHash = any, S = SetOptions, E = any> extends Model<T, S, E> {
 	private _module;
@@ -400,7 +420,7 @@ declare class PageManager extends ItemManagerModule<PageManagerConfig, Pages> {
 	 *  component: '<div class="my-class">My element</div>', // or a JSON of components
 	 * });
 	 */
-	add(props: PageProperties, opts?: AddOptions & SelectableOption & AbortOption): false | Page;
+	add(props: PageProperties, opts?: AddOptions & SelectableOption & AbortOption): Page | undefined;
 	/**
 	 * Remove page
 	 * @param {String|[Page]} page Page or page id
@@ -1007,7 +1027,34 @@ declare enum CanvasEvents {
 	 *  console.log('Canvas pointer updated:', editor.Canvas.getPointer());
 	 * });
 	 */
-	pointer = "canvas:pointer"
+	pointer = "canvas:pointer",
+	/**
+	 * @event `canvas:frame:load` Frame loaded in canvas.
+	 * The event is triggered right after iframe's `onload`.
+	 * @example
+	 * editor.on('canvas:frame:load', ({ window }) => {
+	 *  console.log('Frame loaded', window);
+	 * });
+	 */
+	frameLoad = "canvas:frame:load",
+	/**
+	 * @event `canvas:frame:load:head` Frame head loaded in canvas.
+	 * The event is triggered right after iframe's finished to load the head elemenets (eg. scripts)
+	 * @example
+	 * editor.on('canvas:frame:load:head', ({ window }) => {
+	 *  console.log('Frame head loaded', window);
+	 * });
+	 */
+	frameLoadHead = "canvas:frame:load:head",
+	/**
+	 * @event `canvas:frame:load:body` Frame body loaded in canvas.
+	 * The event is triggered when the body is rendered with components.
+	 * @example
+	 * editor.on('canvas:frame:load:body', ({ window }) => {
+	 *  console.log('Frame completed the body render', window);
+	 * });
+	 */
+	frameLoadBody = "canvas:frame:load:body"
 }
 declare abstract class ModuleDomainViews<TCollection extends ModuleCollection, TItemView extends ModuleView> extends ModuleView<TCollection> {
 	itemsView: string;
@@ -1600,6 +1647,9 @@ declare class CssComposer extends ItemManagerModule<CssComposerConfig & {
 	 * @private
 	 */
 	render(): HTMLElement;
+	checkId(rule: CssRuleJSON | CssRuleJSON[], opts?: {
+		idMap?: PrevToNewIdMap;
+	}): CssRuleJSON[];
 	destroy(): void;
 }
 declare class ComponentsView extends View {
@@ -1662,9 +1712,11 @@ Component> {
 	getChildrenSelector?: Function;
 	getTemplate?: Function;
 	scriptContainer?: HTMLElement;
+	preinitialize(opt?: any): void;
 	initialize(opt?: any): void;
 	get __cmpStyleOpts(): GetSetRuleOptions;
 	get frameView(): FrameView;
+	get createDoc(): Document;
 	__isDraggable(): string | boolean | DraggableDroppableFn | undefined;
 	_clbObj(): {
 		editor: Editor;
@@ -1811,6 +1863,7 @@ Component> {
 	 */
 	reset(): void;
 	_setData(): void;
+	_createElement(tagName: string): Node;
 	/**
 	 * Render children components
 	 * @private
@@ -3235,6 +3288,43 @@ export interface ToolbarButtonProps {
 }
 export type DragMode = "translate" | "absolute" | "";
 export type DraggableDroppableFn = (source: Component, target: Component, index?: number) => boolean | void;
+/**
+ * Delegate commands to other components.
+ */
+export interface ComponentDelegateProps {
+	/**
+	 * Delegate remove command to another component.
+	 * @example
+	 * delegate: {
+	 *  remove: (cmp) => cmp.closestType('other-type'),
+	 * }
+	 */
+	remove?: (cmp: Component) => Component | Nullable;
+	/**
+	 * Delegate move command to another component.
+	 * @example
+	 * delegate: {
+	 *  move: (cmp) => cmp.closestType('other-type'),
+	 * }
+	 */
+	move?: (cmp: Component) => Component | Nullable;
+	/**
+	 * Delegate copy command to another component.
+	 * @example
+	 * delegate: {
+	 *  copy: (cmp) => cmp.closestType('other-type'),
+	 * }
+	 */
+	copy?: (cmp: Component) => Component | Nullable;
+	/**
+	 * Delegate select command to another component.
+	 * @example
+	 * delegate: {
+	 *  select: (cmp) => cmp.findType('other-type')[0],
+	 * }
+	 */
+	select?: (cmp: Component) => Component | Nullable;
+}
 export interface ComponentProperties {
 	/**
 	 * Component type, eg. `text`, `image`, `video`, etc.
@@ -3377,6 +3467,10 @@ export interface ComponentProperties {
 	 * By default, when `toolbar` property is falsy the editor will add automatically commands `core:component-exit` (select parent component, added if there is one), `tlb-move` (added if `draggable`) , `tlb-clone` (added if `copyable`), `tlb-delete` (added if `removable`).
 	 */
 	toolbar?: ToolbarButtonProps[];
+	/**
+	 * Delegate commands to other components.
+	 */
+	delegate?: ComponentDelegateProps;
 	components?: Components;
 	classes?: Selectors;
 	dmode?: DragMode;
@@ -4806,6 +4900,7 @@ export interface IComponent extends ExtractMethods<Component> {
  * Eg. `toolbar: [ { attributes: {class: 'fa fa-arrows'}, command: 'tlb-move' }, ... ]`.
  * By default, when `toolbar` property is falsy the editor will add automatically commands `core:component-exit` (select parent component, added if there is one), `tlb-move` (added if `draggable`) , `tlb-clone` (added if `copyable`), `tlb-delete` (added if `removable`).
  * @property {Collection<Component>} [components=null] Children components. Default: `null`
+ * @property {Object} [delegate=null] Delegate commands to other components. Available commands `remove` | `move` | `copy` | `select`. eg. `{ remove: (cmp) => cmp.closestType('other-type') }`
  *
  * @module docsjs.Component
  */
@@ -4819,6 +4914,7 @@ export declare class Component extends StyleableModel<ComponentProperties> {
 	get content(): string;
 	get toolbar(): ToolbarButtonProps[];
 	get resizable(): boolean | ResizerOptions;
+	get delegate(): ComponentDelegateProps | undefined;
 	/**
 	 * Hook method, called once the model is created
 	 */
@@ -4855,6 +4951,7 @@ export declare class Component extends StyleableModel<ComponentProperties> {
 	}): void;
 	__postRemove(): void;
 	__onChange(m: any, opts: any): void;
+	__onStyleChange(newStyles: StyleProps): void;
 	__changesUp(opts: any): void;
 	__propSelfToParent(props: any): void;
 	__propToParent(props: any): void;
@@ -4947,12 +5044,13 @@ export declare class Component extends StyleableModel<ComponentProperties> {
 	/**
 	 * Replace a component with another one
 	 * @param {String|Component} el Component or HTML string
-	 * @return {Component|Array<Component>} New added component/s
+	 * @param {Object} [opts={}] Options for the append action
+	 * @returns {Array<Component>} New replaced components
 	 * @example
-	 * component.replaceWith('<div>Some new content</div>');
-	 * // -> Component
+	 * const result = component.replaceWith('<div>Some new content</div>');
+	 * // result -> [Component]
 	 */
-	replaceWith(el: Component): any[];
+	replaceWith<C extends Component = Component>(el: ComponentAdd, opts?: AddOptions): C[];
 	/**
 	 * Emit changes for each updated attribute
 	 * @private
@@ -4985,7 +5083,7 @@ export declare class Component extends StyleableModel<ComponentProperties> {
 	 * component.removeAttributes('some-attr');
 	 * component.removeAttributes(['some-attr1', 'some-attr2']);
 	 */
-	removeAttributes(attrs?: string[], opts?: SetOptions): this;
+	removeAttributes(attrs?: string | string[], opts?: SetOptions): this;
 	/**
 	 * Get the style of the component
 	 * @return {Object}
@@ -5435,6 +5533,7 @@ export declare class Component extends StyleableModel<ComponentProperties> {
 	static getList(model: Component): any;
 	static checkId(components: ComponentDefinitionDefined | ComponentDefinitionDefined[], styles?: CssRuleJSON[], list?: ObjectAny, opts?: {
 		keepIds?: string[];
+		idMap?: PrevToNewIdMap;
 	}): void;
 }
 declare class Selectable extends Model {
@@ -7922,6 +8021,9 @@ export type EditorConfigKeys = keyof EditorConfig;
 export declare class Blocks extends Collection<Block> {
 }
 export declare class Categories extends Collection<Category> {
+	/** @ts-ignore */
+	add(model: (BlockCategoryProperties | Category)[] | BlockCategoryProperties | Category, opts?: AddOptions): Category;
+	get(id: string | Category): Category;
 }
 declare enum BlocksEvents {
 	/**
@@ -7989,7 +8091,7 @@ declare class BlocksView extends View {
 	em: EditorModel;
 	config: BlocksViewConfig;
 	categories: Categories;
-	renderedCategories: Record<string, CategoryView>;
+	renderedCategories: Map<string, CategoryView>;
 	ppfx: string;
 	noCatClass: string;
 	blockContClass: string;
@@ -10974,6 +11076,8 @@ declare class UtilsModule extends Module {
 	Resizer: typeof Resizer;
 	Dragger: typeof Dragger;
 	helpers: {
+		isBultInMethod: (key: string) => boolean;
+		normalizeKey: (key: string) => string;
 		wait: (mls?: number) => Promise<unknown>;
 		isDef: (value: any) => boolean;
 		hasWin: () => boolean;
@@ -10993,7 +11097,7 @@ declare class UtilsModule extends Module {
 		hasDnd: (em: EditorModel) => boolean;
 		upFirst: (value: string) => string;
 		matches: any;
-		getModel: (el: any, $?: any) => any;
+		getModel: (el: any, $?: any) => Component | undefined;
 		camelCase: (value: string) => string;
 		getElement: (el: HTMLElement) => any;
 		shallowDiff: (objOrig: ObjectAny, objNew: ObjectAny) => ObjectAny;
@@ -11772,7 +11876,7 @@ declare class EditorModel extends Model {
 	 * and there are unsaved changes
 	 * @private
 	 */
-	updateChanges(): void;
+	updateChanges(m: any, v: any, opts: ObjectAny): void;
 	/**
 	 * Load generic module
 	 */
@@ -11818,35 +11922,35 @@ declare class EditorModel extends Model {
 	getSelectedAll(): Component[];
 	/**
 	 * Select a component
-	 * @param  {Component|HTMLElement} el Component to select
+	 * @param  {Component} el Component to select
 	 * @param  {Object} [opts={}] Options, optional
 	 * @public
 	 */
 	setSelected(el?: Component | Component[], opts?: any): void;
 	/**
 	 * Add component to selection
-	 * @param  {Component|HTMLElement} el Component to select
+	 * @param  {Component|Array<Component>} component Component to select
 	 * @param  {Object} [opts={}] Options, optional
 	 * @public
 	 */
-	addSelected(el: Component | Component[], opts?: any): void;
+	addSelected(component: Component | Component[], opts?: any): void;
 	/**
 	 * Remove component from selection
-	 * @param  {Component|HTMLElement} el Component to select
+	 * @param  {Component|Array<Component>} component Component to select
 	 * @param  {Object} [opts={}] Options, optional
 	 * @public
 	 */
-	removeSelected(el: Component | Component[], opts?: {}): void;
+	removeSelected(component: Component | Component[], opts?: {}): void;
 	/**
 	 * Toggle component selection
-	 * @param  {Component|HTMLElement} el Component to select
+	 * @param  {Component|Array<Component>} component Component to select
 	 * @param  {Object} [opts={}] Options, optional
 	 * @public
 	 */
-	toggleSelected(el: Component | Component[], opts?: any): void;
+	toggleSelected(component: Component | Component[], opts?: any): void;
 	/**
 	 * Hover a component
-	 * @param  {Component|HTMLElement} cmp Component to select
+	 * @param  {Component|Array<Component>} cmp Component to select
 	 * @param  {Object} [opts={}] Options, optional
 	 * @private
 	 */
